@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Service Cloud (Serveur Web Nginx)
+  cloud-service:
+    image: nginx:alpine
+    container_name: cloud-service
+    ports:
+      - "8081:80"
+    networks:
+      - hybrid-network
+    volumes:
+      - ./logs/cloud:/var/log/nginx
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  # Service On-Premise (Base de données Postgres)
+  on-premise-server:
+    image: postgres:15-alpine
+    container_name: on-premise-db
+    ports:
+      - "5432:5432"
+    networks:
+      - hybrid-network
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: SecurePass2026
+      POSTGRES_DB: company_data
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./logs/on-premise:/var/log/postgresql
+    restart: unless-stopped
+
+  # Générateur de Logs
+  log-generator:
+    build:
+      context: ./log-generator
+      dockerfile: Dockerfile
+    container_name: log-generator
+    networks:
+      - hybrid-network
+    volumes:
+      - ./logs/generated:/app/logs
+    depends_on:
+      - cloud-service
+      - on-premise-server
+    restart: on-failure
+
+  # Simulateur d'Attaques
+  attacker-simulator:
+    image: python:3.11-slim
+    container_name: attacker-sim
+    networks:
+      - hybrid-network
+    volumes:
+      - ./attack-scripts:/app
+      - ./logs/attacks:/app/logs
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install requests &&
+        python attack_simulator.py
+      "
+    depends_on:
+      - cloud-service
+      - on-premise-server
+    restart: on-failure
+
+networks:
+  hybrid-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

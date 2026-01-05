@@ -1,0 +1,65 @@
+[2026-01-03 17:15:38] SQL Injection: Début de la simulation
+[2026-01-03 17:15:38] SQL Injection: Payload: ' OR '1'='1 → Status: 404
+[2026-01-03 17:15:40] SQL Injection: Payload: admin'-- → Status: 404
+[2026-01-03 17:15:43] SQL Injection: Payload: '; DROP TABLE users;-- → Status: 404
+[2026-01-03 17:15:46] SQL Injection: Payload: ' UNION SELECT NULL-- → Status: 404
+[2026-01-03 17:17:19] DDoS Simulation: Début du flood HTTP (50 requêtes)
+[2026-01-03 17:17:19] DDoS: 1/50 requêtes envoyées
+[2026-01-03 17:17:20] DDoS: 11/50 requêtes envoyées
+[2026-01-03 17:17:21] DDoS: 21/50 requêtes envoyées
+[2026-01-03 17:17:22] DDoS: 31/50 requêtes envoyées
+[2026-01-03 17:17:23] DDoS: 41/50 requêtes envoyées
+[2026-01-03 17:17:24] DDoS Simulation: Flood terminé – 50/50 réponses reçues
+[2026-01-03 17:18:29] DDoS Simulation: Début du flood HTTP (50 requêtes)
+[2026-01-03 17:18:29] DDoS: 1/50 requêtes envoyées
+[2026-01-03 17:18:30] DDoS: 11/50 requêtes envoyées
+[2026-01-03 17:18:31] DDoS: 21/50 requêtes envoyées
+[2026-01-03 17:18:32] DDoS: 31/50 requêtes envoyées
+[2026-01-03 17:18:33] DDoS: 41/50 requêtes envoyées
+[2026-01-03 17:18:34] DDoS Simulation: Flood terminé – 50/50 réponses reçues
+[2026-01-03 17:19:47] DDoS Simulation: Début du flood HTTP (50 requêtes)
+[2026-01-03 17:19:47] DDoS: 1/50 requêtes envoyées
+[2026-01-03 17:19:48] DDoS: 11/50 requêtes envoyées
+[2026-01-03 17:19:49] DDoS: 21/50 requêtes envoyées
+[2026-01-03 17:19:50] DDoS: 31/50 requêtes envoyées
+[2026-01-03 17:19:51] DDoS: 41/50 requêtes envoyées
+[2026-01-03 17:19:52] DDoS Simulation: Flood terminé – 50/50 réponses reçues
+[2026-01-03 17:21:08] SQL Injection: Début de la simulation
+[2026-01-03 17:21:08] SQL Injection: Payload: ' OR '1'='1 → Status: 404
+[2026-01-03 17:21:11] SQL Injection: Payload: admin'-- → Status: 404
+[2026-01-03 17:21:13] SQL Injection: Payload: '; DROP TABLE users;-- → Status: 404
+[2026-01-03 17:21:14] SQL Injection: Payload: ' UNION SELECT NULL-- → Status: 404
+[2026-01-03 17:22:33] SQL Injection: Début de la simulation
+[2026-01-03 17:22:33] SQL Injection: Payload: ' OR '1'='1 → Status: 404
+[2026-01-03 17:22:35] SQL Injection: Payload: admin'-- → Status: 404
+[2026-01-03 17:22:36] SQL Injection: Payload: '; DROP TABLE users;-- → Status: 404
+[2026-01-03 17:22:39] SQL Injection: Payload: ' UNION SELECT NULL-- → Status: 404
+[2026-01-03 17:23:52] SQL Injection: Début de la simulation
+[2026-01-03 17:23:52] SQL Injection: Payload: ' OR '1'='1 → Status: 404
+[2026-01-03 17:23:54] SQL Injection: Payload: admin'-- → Status: 404
+[2026-01-03 17:23:56] SQL Injection: Payload: '; DROP TABLE users;-- → Status: 404
+[2026-01-03 17:23:57] SQL Injection: Payload: ' UNION SELECT NULL-- → Status: 404
+[2026-01-03 17:24:41] SQL Injection: Début de la simulation
+[2026-01-03 17:24:41] SQL Injection: Payload: ' OR '1'='1 → Status: 404
+[2026-01-03 17:24:44] SQL Injection: Payload: admin'-- → Status: 404
+[2026-01-03 17:24:47] SQL Injection: Payload: '; DROP TABLE users;-- → Status: 404
+[2026-01-03 17:24:48] SQL Injection: Payload: ' UNION SELECT NULL-- → Status: 404
+[2026-01-03 17:25:36] DDoS Simulation: Début du flood HTTP (50 requêtes)
+[2026-01-03 17:25:36] DDoS: 1/50 requêtes envoyées
+[2026-01-03 17:25:37] DDoS: 11/50 requêtes envoyées
+[2026-01-03 17:25:39] DDoS: 21/50 requêtes envoyées
+[2026-01-03 17:25:40] DDoS: 31/50 requêtes envoyées
+[2026-01-03 17:25:41] DDoS: 41/50 requêtes envoyées
+[2026-01-03 17:25:42] DDoS Simulation: Flood terminé – 50/50 réponses reçues
+[2026-01-03 17:26:22] SQL Injection: Début de la simulation
+[2026-01-03 17:26:22] SQL Injection: Payload: ' OR '1'='1 → Status: 404
+[2026-01-03 17:26:24] SQL Injection: Payload: admin'-- → Status: 404
+[2026-01-03 17:26:25] SQL Injection: Payload: '; DROP TABLE users;-- → Status: 404
+[2026-01-03 17:26:27] SQL Injection: Payload: ' UNION SELECT NULL-- → Status: 404
+[2026-01-03 17:27:29] DDoS Simulation: Début du flood HTTP (50 requêtes)
+[2026-01-03 17:27:29] DDoS: 1/50 requêtes envoyées
+[2026-01-03 17:27:30] DDoS: 11/50 requêtes envoyées
+[2026-01-03 17:27:31] DDoS: 21/50 requêtes envoyées
+[2026-01-03 17:27:32] DDoS: 31/50 requêtes envoyées
+[2026-01-03 17:27:33] DDoS: 41/50 requêtes envoyées
+[2026-01-03 17:27:34] DDoS Simulation: Flood terminé – 50/50 réponses reçues

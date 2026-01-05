@@ -1,0 +1,158 @@
+2026/01/03 16:46:50 [notice] 1#1: using the "epoll" event method
+2026/01/03 16:46:50 [notice] 1#1: nginx/1.29.4
+2026/01/03 16:46:50 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+2026/01/03 16:46:50 [notice] 1#1: OS: Linux 6.6.87.2-microsoft-standard-WSL2
+2026/01/03 16:46:50 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/01/03 16:46:50 [notice] 1#1: start worker processes
+2026/01/03 16:46:50 [notice] 1#1: start worker process 30
+2026/01/03 16:46:50 [notice] 1#1: start worker process 31
+2026/01/03 16:46:50 [notice] 1#1: start worker process 32
+2026/01/03 16:46:50 [notice] 1#1: start worker process 33
+2026/01/03 16:46:50 [notice] 1#1: start worker process 34
+2026/01/03 16:46:50 [notice] 1#1: start worker process 35
+2026/01/03 16:46:50 [notice] 1#1: start worker process 36
+2026/01/03 16:46:50 [notice] 1#1: start worker process 37
+2026/01/03 16:58:15 [error] 30#30: *1 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 16:58:16 [error] 31#31: *2 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 16:58:17 [error] 32#32: *3 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 16:59:53 [error] 32#32: *54 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 16:59:54 [error] 32#32: *55 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 16:59:55 [error] 32#32: *56 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:00:36 [error] 33#33: *57 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 17:00:37 [error] 33#33: *58 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:00:38 [error] 33#33: *59 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:01:18 [error] 33#33: *60 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 17:01:19 [error] 33#33: *61 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:01:20 [error] 33#33: *62 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:03:03 [error] 36#36: *113 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 17:03:04 [error] 36#36: *114 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:03:05 [error] 36#36: *115 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:04:40 [error] 31#31: *166 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 17:04:41 [error] 31#31: *167 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:04:42 [error] 31#31: *168 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:05:31 [error] 32#32: *169 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20OR%20'1'='1 HTTP/1.1", host: "cloud-service"
+2026/01/03 17:05:32 [error] 32#32: *170 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user=admin'-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:05:33 [error] 32#32: *171 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.4, server: localhost, request: "GET /login?user='%20UNION%20SELECT%20NULL-- HTTP/1.1", host: "cloud-service"
+2026/01/03 17:05:46 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2026/01/03 17:05:46 [notice] 30#30: gracefully shutting down
+2026/01/03 17:05:46 [notice] 33#33: gracefully shutting down
+2026/01/03 17:05:46 [notice] 36#36: gracefully shutting down
+2026/01/03 17:05:46 [notice] 37#37: gracefully shutting down
+2026/01/03 17:05:46 [notice] 32#32: gracefully shutting down
+2026/01/03 17:05:46 [notice] 32#32: exiting
+2026/01/03 17:05:46 [notice] 34#34: gracefully shutting down
+2026/01/03 17:05:46 [notice] 30#30: exiting
+2026/01/03 17:05:46 [notice] 31#31: gracefully shutting down
+2026/01/03 17:05:46 [notice] 36#36: exiting
+2026/01/03 17:05:46 [notice] 33#33: exiting
+2026/01/03 17:05:46 [notice] 35#35: gracefully shutting down
+2026/01/03 17:05:46 [notice] 37#37: exiting
+2026/01/03 17:05:46 [notice] 32#32: exit
+2026/01/03 17:05:46 [notice] 34#34: exiting
+2026/01/03 17:05:46 [notice] 30#30: exit
+2026/01/03 17:05:46 [notice] 31#31: exiting
+2026/01/03 17:05:46 [notice] 36#36: exit
+2026/01/03 17:05:46 [notice] 33#33: exit
+2026/01/03 17:05:46 [notice] 35#35: exiting
+2026/01/03 17:05:46 [notice] 37#37: exit
+2026/01/03 17:05:46 [notice] 34#34: exit
+2026/01/03 17:05:46 [notice] 31#31: exit
+2026/01/03 17:05:46 [notice] 35#35: exit
+2026/01/03 17:05:46 [notice] 1#1: signal 17 (SIGCHLD) received from 37
+2026/01/03 17:05:46 [notice] 1#1: worker process 37 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:05:46 [notice] 1#1: signal 17 (SIGCHLD) received from 30
+2026/01/03 17:05:46 [notice] 1#1: worker process 30 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:05:46 [notice] 1#1: signal 17 (SIGCHLD) received from 32
+2026/01/03 17:05:46 [notice] 1#1: worker process 32 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: worker process 33 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: worker process 36 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:05:46 [notice] 1#1: signal 17 (SIGCHLD) received from 31
+2026/01/03 17:05:46 [notice] 1#1: worker process 31 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:05:46 [notice] 1#1: signal 17 (SIGCHLD) received from 34
+2026/01/03 17:05:46 [notice] 1#1: worker process 34 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: worker process 35 exited with code 0
+2026/01/03 17:05:46 [notice] 1#1: exit
+2026/01/03 17:14:01 [notice] 1#1: using the "epoll" event method
+2026/01/03 17:14:01 [notice] 1#1: nginx/1.29.4
+2026/01/03 17:14:01 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+2026/01/03 17:14:01 [notice] 1#1: OS: Linux 6.6.87.2-microsoft-standard-WSL2
+2026/01/03 17:14:01 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/01/03 17:14:01 [notice] 1#1: start worker processes
+2026/01/03 17:14:01 [notice] 1#1: start worker process 22
+2026/01/03 17:14:01 [notice] 1#1: start worker process 23
+2026/01/03 17:14:01 [notice] 1#1: start worker process 24
+2026/01/03 17:14:01 [notice] 1#1: start worker process 25
+2026/01/03 17:14:01 [notice] 1#1: start worker process 26
+2026/01/03 17:14:01 [notice] 1#1: start worker process 27
+2026/01/03 17:14:01 [notice] 1#1: start worker process 28
+2026/01/03 17:14:01 [notice] 1#1: start worker process 29
+2026/01/03 17:15:38 [error] 22#22: *1 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20OR%20'1'='1&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:15:40 [error] 23#23: *2 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=admin'--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:15:43 [error] 24#24: *3 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=';%20DROP%20TABLE%20users;--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:15:46 [error] 26#26: *4 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20UNION%20SELECT%20NULL--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:21:08 [error] 23#23: *155 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20OR%20'1'='1&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:21:11 [error] 23#23: *156 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=admin'--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:21:13 [error] 23#23: *157 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=';%20DROP%20TABLE%20users;--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:21:14 [error] 23#23: *158 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20UNION%20SELECT%20NULL--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:22:33 [error] 23#23: *159 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20OR%20'1'='1&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:22:35 [error] 23#23: *160 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=admin'--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:22:36 [error] 23#23: *161 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=';%20DROP%20TABLE%20users;--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:22:39 [error] 23#23: *162 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20UNION%20SELECT%20NULL--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:23:52 [error] 23#23: *163 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20OR%20'1'='1&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:23:54 [error] 23#23: *164 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=admin'--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:23:56 [error] 23#23: *165 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=';%20DROP%20TABLE%20users;--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:23:57 [error] 23#23: *166 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20UNION%20SELECT%20NULL--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:24:41 [error] 23#23: *167 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20OR%20'1'='1&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:24:44 [error] 23#23: *168 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=admin'--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:24:47 [error] 24#24: *169 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=';%20DROP%20TABLE%20users;--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:24:48 [error] 24#24: *170 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20UNION%20SELECT%20NULL--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:26:22 [error] 27#27: *221 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20OR%20'1'='1&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:26:24 [error] 27#27: *222 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=admin'--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:26:25 [error] 27#27: *223 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username=';%20DROP%20TABLE%20users;--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:26:27 [error] 27#27: *224 open() "/usr/share/nginx/html/login" failed (2: No such file or directory), client: 172.19.0.5, server: localhost, request: "GET /login?username='%20UNION%20SELECT%20NULL--&password=test HTTP/1.1", host: "cloud-service"
+2026/01/03 17:27:39 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2026/01/03 17:27:39 [notice] 22#22: gracefully shutting down
+2026/01/03 17:27:39 [notice] 23#23: gracefully shutting down
+2026/01/03 17:27:39 [notice] 25#25: gracefully shutting down
+2026/01/03 17:27:39 [notice] 26#26: gracefully shutting down
+2026/01/03 17:27:39 [notice] 24#24: gracefully shutting down
+2026/01/03 17:27:39 [notice] 24#24: exiting
+2026/01/03 17:27:39 [notice] 28#28: gracefully shutting down
+2026/01/03 17:27:39 [notice] 24#24: exit
+2026/01/03 17:27:39 [notice] 29#29: gracefully shutting down
+2026/01/03 17:27:39 [notice] 28#28: exiting
+2026/01/03 17:27:39 [notice] 27#27: gracefully shutting down
+2026/01/03 17:27:39 [notice] 22#22: exiting
+2026/01/03 17:27:39 [notice] 23#23: exiting
+2026/01/03 17:27:39 [notice] 25#25: exiting
+2026/01/03 17:27:39 [notice] 26#26: exiting
+2026/01/03 17:27:39 [notice] 29#29: exiting
+2026/01/03 17:27:39 [notice] 28#28: exit
+2026/01/03 17:27:39 [notice] 27#27: exiting
+2026/01/03 17:27:39 [notice] 22#22: exit
+2026/01/03 17:27:39 [notice] 23#23: exit
+2026/01/03 17:27:39 [notice] 25#25: exit
+2026/01/03 17:27:39 [notice] 26#26: exit
+2026/01/03 17:27:39 [notice] 29#29: exit
+2026/01/03 17:27:39 [notice] 27#27: exit
+2026/01/03 17:27:39 [notice] 1#1: signal 17 (SIGCHLD) received from 24
+2026/01/03 17:27:39 [notice] 1#1: worker process 24 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:27:39 [notice] 1#1: signal 17 (SIGCHLD) received from 29
+2026/01/03 17:27:39 [notice] 1#1: worker process 22 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: worker process 27 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: worker process 28 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: worker process 29 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:27:39 [notice] 1#1: signal 17 (SIGCHLD) received from 25
+2026/01/03 17:27:39 [notice] 1#1: worker process 23 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: worker process 25 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: signal 29 (SIGIO) received
+2026/01/03 17:27:39 [notice] 1#1: signal 17 (SIGCHLD) received from 23
+2026/01/03 17:27:39 [notice] 1#1: signal 17 (SIGCHLD) received from 26
+2026/01/03 17:27:39 [notice] 1#1: worker process 26 exited with code 0
+2026/01/03 17:27:39 [notice] 1#1: exit
