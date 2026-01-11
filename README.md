@@ -39,3 +39,8 @@ Auteur : Firas Kerkeni
    .\venv\Scripts\activate   # Windows
    pip install -r requirements.txt
    python app.py
+3. **Frontend**  
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
