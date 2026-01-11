@@ -1,23 +1,41 @@
 # Plateforme Sécurité IA - PFE 2025-2026
 
-**Plateforme hybride cloud-réseaux sécurisée avec IA générative et multi-agents MCP pour l'analyse automatisée de logs**
+**Plateforme hybride cloud-réseaux sécurisée intégrant IA générative locale et coordination multi-agents pour l'analyse automatisée de logs de sécurité et la génération de configurations sécurisées.**
 
-## Fonctionnalités
-- Analyse de logs en temps réel avec IA locale (Ollama + phi3:mini)
-- Multi-agents collaboratifs (CrewAI) : Analyste, Remédiateur, Validateur
-- Interface web moderne (React + Vite)
-- Détection d'anomalies, actions techniques et criticité
-- Traçabilité blockchain Hyperledger Fabric des décisions critiques (en cours d'intégration finale)
+Projet de Fin d'Études – 5ᵉ année SAE – Esprit – Stage chez DataAxion  
+Encadrant : M. Sebti Chouchene  
+Auteur : Firas Kerkeni
 
-## Lancement rapide
-1. Activer le venv : `venv\Scripts\activate`
-2. Lancer le backend : `python backend\app.py`
-3. Lancer le frontend : `cd frontend && npm run dev`
-4. Ouvrir http://localhost:5173
+## Fonctionnalités principales
 
-## Auteur
-Firas Kerkeni - PFE 2025-2026
+- Analyse contextuelle de logs en temps réel avec IA générative locale (Ollama + phi3:mini)
+- Système multi-agents collaboratifs (CrewAI) :  
+  - Analyste → détection d’anomalies  
+  - Remédiateur → propositions d’actions techniques (iptables, Fail2Ban, etc.)  
+  - Validateur → évaluation de la criticité & priorisation
+- Interface web moderne et intuitive (React + Vite + Tailwind)
+- Détection précise des menaces (brute force SSH, scans de ports, etc.)
+- Traçabilité immuable des événements critiques via blockchain Hyperledger Fabric (en cours de finalisation)
 
-## Captures d'écran
-![Interface principale](captures/interface.png)
-![Analyse critique](captures/analyse_critique.png)
+## Technologies utilisées
+
+- **Backend** : Python 3.11, Flask, CrewAI, LangChain-Ollama
+- **IA locale** : Ollama + modèle phi3:mini (3.8B paramètres)
+- **Frontend** : React 18, Vite, Axios, Tailwind CSS
+- **Blockchain** : Hyperledger Fabric v2.5 (test-network + chaincode Go)
+- **Conteneurisation** : Docker + Docker Compose (simulation environnement hybride)
+
+## Lancement rapide (en local)
+
+1. **Prérequis**  
+   - Python 3.11+  
+   - Node.js 20+  
+   - Ollama installé & lancé (`ollama run phi3:mini` dans un terminal séparé)
+
+2. **Backend**  
+   ```bash
+   cd backend
+   python -m venv venv
+   .\venv\Scripts\activate   # Windows
+   pip install -r requirements.txt
+   python app.py
