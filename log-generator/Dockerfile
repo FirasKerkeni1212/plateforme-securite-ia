@@ -1,13 +1,9 @@
 FROM python:3.11-slim
 
-RUN adduser --disabled-password --gecos '' --no-create-home appuser
-
-RUN mkdir -p /app/logs && chown appuser:appuser /app/logs
-
 WORKDIR /app
 
-COPY generate_logs.py .
+RUN mkdir -p /app/logs
 
-USER appuser
+COPY generate_logs.py .
 
 CMD ["python", "generate_logs.py"]

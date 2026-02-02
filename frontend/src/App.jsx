@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import axios from 'axios';
 import './App.css';
 
 function App() {
@@ -19,11 +18,25 @@ function App() {
     setResult(null);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/analyze', {
-        log: log.trim()
+      const response = await fetch('http://localhost:5000/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ log: log.trim() })
       });
-      setResult(response.data);
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Résultat reçu du backend :', data);
+
+      // Le backend retourne déjà du JSON structuré, pas besoin de parser !
+      setResult(data);
     } catch (err) {
+      console.error('Erreur API :', err);
       setError('Erreur : Vérifie que ton serveur Flask tourne sur le port 5000');
     } finally {
       setLoading(false);
@@ -40,8 +53,8 @@ function App() {
         <textarea
           value={log}
           onChange={(e) => setLog(e.target.value)}
-          placeholder="Exemple : Failed password for invalid user admin from 192.168.1.100..."
-          rows="8"
+          placeholder="Colle ici un ou plusieurs logs de sécurité..."
+          rows="10"
         />
         <button onClick={handleAnalyze} disabled={loading} className="analyze-btn">
           {loading ? 'Analyse en cours...' : 'Analyser avec l\'IA'}
@@ -53,14 +66,62 @@ function App() {
         <div className="result-card">
           <h2>Résultat de l'IA</h2>
           <div className="grid">
-            <div><strong>Classification :</strong> {result.classification}</div>
-            <div><strong>Confiance :</strong> {(result.confidence * 100).toFixed(1)}%</div>
+            {/* Classification */}
+            <div>
+              <strong>Classification :</strong>{' '}
+              {result.is_anomaly ? (
+                <span className="text-red-500 font-bold">Anomalie détectée</span>
+              ) : (
+                <span className="text-green-500 font-bold">Trafic normal</span>
+              )}
+            </div>
+
+            {/* Confiance */}
+            <div>
+              <strong>Confiance :</strong>{' '}
+              {(result.confidence * 100).toFixed(1)}%
+            </div>
+
+            {/* Badge Anomalie */}
             <div className={result.is_anomaly ? 'danger' : 'safe'}>
-              <strong>Anomalie :</strong> {result.is_anomaly ? 'OUI 🔴' : 'NON 🟢'}
+              <strong>Anomalie :</strong>{' '}
+              {result.is_anomaly ? 'OUI 🔴' : 'NON 🟢'}
             </div>
+
+            {/* Criticité */}
+            <div>
+              <strong>Criticité :</strong>{' '}
+              <span className={
+                (result.criticality || '').toLowerCase() === 'critique' ? 'text-red-600 font-bold' :
+                (result.criticality || '').toLowerCase() === 'haute'   ? 'text-orange-500 font-bold' :
+                (result.criticality || '').toLowerCase() === 'moyenne' ? 'text-yellow-500 font-medium' :
+                'text-green-500 font-bold'
+              }>
+                {result.criticality
+                  ? result.criticality.charAt(0).toUpperCase() + result.criticality.slice(1)
+                  : 'Basse'}
+              </span>
+            </div>
+
+            {/* Suggestion */}
             <div className="suggestion">
-              <strong>Suggestion :</strong> {result.suggestion}
+              <strong>Suggestion :</strong>{' '}
+              {result.summary || 'Aucune suggestion'}
             </div>
+
+            {/* Actions détaillées si présentes */}
+            {result.actions && result.actions.length > 0 && (
+              <div className="actions-list" style={{ gridColumn: '1 / -1', marginTop: '15px' }}>
+                <strong>Actions proposées :</strong>
+                <ul style={{ marginTop: '10px' }}>
+                  {result.actions.map((action, idx) => (
+                    <li key={idx} style={{ marginBottom: '8px' }}>
+                      ✓ {action}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}

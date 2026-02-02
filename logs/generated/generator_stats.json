@@ -1,0 +1,9 @@
+{
+    "stats": {
+        "normal": 4175,
+        "brute_force": 1195,
+        "port_scan": 630
+    },
+    "total": 6000,
+    "timestamp": "2026-01-31T18:31:51.775654"
+}

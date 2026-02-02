@@ -1,0 +1,285 @@
+version: '3.8'
+
+services:
+  # ============================================================
+  # INFRASTRUCTURE CLOUD
+  # ============================================================
+  
+  cloud-service:
+    image: nginx:alpine
+    container_name: cloud-service
+    ports:
+      - "8081:80"
+    networks:
+      - hybrid-network
+    volumes:
+      - ./logs/cloud:/var/log/nginx
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ============================================================
+  # INFRASTRUCTURE ON-PREMISE
+  # ============================================================
+  
+  on-premise-server:
+    image: postgres:15-alpine
+    container_name: on-premise-db
+    ports:
+      - "5432:5432"
+    networks:
+      - hybrid-network
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: SecurePass2026
+      POSTGRES_DB: company_data
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./logs/on-premise:/var/log/postgresql
+      - ./config/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ============================================================
+  # BACKEND - Flask + CrewAI + Ollama
+  # ============================================================
+  
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: backend-service
+    ports:
+      - "5000:5000"
+    networks:
+      - hybrid-network
+    environment:
+      FLASK_ENV: development
+      FLASK_APP: app.py
+      OPENAI_API_KEY: ollama
+      OPENAI_API_BASE: http://ollama:11434/v1
+      DATABASE_URL: postgresql://admin:SecurePass2026@on-premise-server:5432/company_data
+    volumes:
+      - ./backend:/app
+      - ./logs/backend:/app/logs
+      - ./backend/blockchain_logs:/app/blockchain_logs
+    depends_on:
+      ollama:
+        condition: service_healthy
+      on-premise-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: python app.py
+    restart: unless-stopped
+
+  # ============================================================
+  # FRONTEND - React + Vite
+  # ============================================================
+  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-service
+    ports:
+      - "5173:5173"
+    networks:
+      - hybrid-network
+    environment:
+      VITE_API_URL: http://backend:5000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  # ============================================================
+  # LLM - Ollama (local)
+  # ============================================================
+  
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-service
+    ports:
+      - "11434:11434"
+    networks:
+      - hybrid-network
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    command: serve
+    restart: unless-stopped
+
+  # ============================================================
+  # LOG COLLECTION & AGGREGATION - Fluentd
+  # ============================================================
+  
+  fluentd:
+    build:
+      context: ./fluentd
+      dockerfile: Dockerfile
+    container_name: fluentd-service
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    networks:
+      - hybrid-network
+    volumes:
+      - ./fluentd/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - ./logs/fluentd:/fluentd/log
+      - ./logs/aggregated:/fluentd/aggregated
+    depends_on:
+      - cloud-service
+      - on-premise-server
+    environment:
+      FLUENT_LOG_LEVEL: info
+    restart: unless-stopped
+
+  # ============================================================
+  # MONITORING - Prometheus
+  # ============================================================
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-service
+    ports:
+      - "9090:9090"
+    networks:
+      - hybrid-network
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================
+  # VISUALIZATION - Grafana
+  # ============================================================
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-service
+    ports:
+      - "3000:3000"
+    networks:
+      - hybrid-network
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin2026
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================
+  # LOG GENERATION
+  # ============================================================
+  
+  log-generator:
+    build:
+      context: ./log-generator
+      dockerfile: Dockerfile
+    container_name: log-generator-service
+    networks:
+      - hybrid-network
+    volumes:
+      - ./logs/generated:/app/logs
+    depends_on:
+      - cloud-service
+      - on-premise-server
+    environment:
+      LOG_DIR: /app/logs
+    restart: on-failure
+
+  # ============================================================
+  # ATTACK SIMULATOR
+  # ============================================================
+  
+  attacker-simulator:
+    build:
+      context: ./attack-scripts
+      dockerfile: Dockerfile
+    container_name: attacker-sim-service
+    networks:
+      - hybrid-network
+    volumes:
+      - ./attack-scripts:/app
+      - ./logs/attacks:/app/logs
+    depends_on:
+      - cloud-service
+      - on-premise-server
+      - backend
+    environment:
+      CLOUD_TARGET: http://cloud-service
+      BACKEND_TARGET: http://backend:5000
+    restart: on-failure
+
+networks:
+  hybrid-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  ollama-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

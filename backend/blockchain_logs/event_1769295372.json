@@ -1,0 +1,8 @@
+{
+  "event_id": "event_1769295372",
+  "timestamp": "2026-01-24T23:56:12Z",
+  "log": "Jan 22 18:25:10 server sshd[6010]: Invalid user test from 192.168.1.50 port 50000\nJan 22 18:25:15 server sshd[6015]: Accepted password for user charlie from 192.168.1.50 port 50001 ssh2",
+  "analysis": "Criticit\u00e9 : haute\nAction prioritaire : Configure Fail2Ban avec les bonnes r\u00e8gles de jail pour le service SSH.\nJustification : La mise en place du syst\u00e8me fail2ban permet d'automatiser la r\u00e9ponse aux tentatives de connexion r\u00e9p\u00e9t\u00e9es et non autoris\u00e9es, ce qui est essentiel dans un brute-force attack o\u00f9 l'attaquant tente syst\u00e9matiquement diff\u00e9rentes combinaisons de mots de passe. En configurant Fail2Ban avec des r\u00e8gles sp\u00e9cifiques au service SSH (jail_ssh), nous pouvons bloquer efficacemen\ntly les ",
+  "remediation": "Actions propos\u00e9es par les agents",
+  "criticality": "Haute"
+}
