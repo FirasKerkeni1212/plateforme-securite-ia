@@ -109,3 +109,8 @@ textarea::placeholder {
   font-size: 1.2rem;
   background: rgba(0,0,0,0.3) !important;
 }
+
+.force-nowrap {
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
