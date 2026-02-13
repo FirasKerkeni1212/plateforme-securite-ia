@@ -1,9 +1,9 @@
 {
     "stats": {
-        "normal": 4175,
-        "brute_force": 1195,
-        "port_scan": 630
+        "normal": 6594,
+        "brute_force": 1958,
+        "port_scan": 948
     },
-    "total": 6000,
-    "timestamp": "2026-01-31T18:31:51.775654"
+    "total": 9500,
+    "timestamp": "2026-02-12T23:21:14.319524"
 }

@@ -1,52 +1,27 @@
 global:
   scrape_interval: 15s
-  evaluation_interval: 15s
-  external_labels:
-    monitor: 'hybrid-security-platform'
 
 scrape_configs:
-  # Prometheus lui-même
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # Backend Flask
   - job_name: 'backend'
     static_configs:
-      - targets: ['backend:5000']
+      - targets: ['backend:5000']  # ✅ Service name!
     metrics_path: '/metrics'
-    scrape_interval: 5s
 
-  # Ollama
-  - job_name: 'ollama'
+  - job_name: 'frontend'
     static_configs:
-      - targets: ['ollama:11434']
-    scrape_interval: 10s
+      - targets: ['frontend:5173']  # ✅ Service name!
+    metrics_path: '/metrics'
 
-  # Postgres (via postgres_exporter si disponible)
+  - job_name: 'cloud-service'
+    static_configs:
+      - targets: ['cloud-service:80']  # ✅ OK
+    metrics_path: '/metrics'
+
   - job_name: 'postgres'
     static_configs:
-      - targets: ['on-premise-server:5432']
-    scrape_interval: 10s
-
-  # Nginx (via nginx_exporter si disponible)
-  - job_name: 'nginx'
-    static_configs:
-      - targets: ['cloud-service:80']
-    scrape_interval: 10s
-
-  # Node exporter (si installé)
-  - job_name: 'node'
-    static_configs:
-      - targets: ['localhost:9100']
-    scrape_interval: 15s
-
-# Rules pour les alertes
-rule_files:
-  - '/etc/prometheus/rules.yml'
-
-# Configuration Alertmanager (optionnel)
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ['alertmanager:9093']
+      - targets: ['on-premise-server:5432']  # ✅ Service name!
+    metrics_path: '/metrics'
