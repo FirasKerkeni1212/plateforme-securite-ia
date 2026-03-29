@@ -1,0 +1,29 @@
+{
+  "date": "2026-03-11T05:07:17.015128",
+  "total_logs": 2000,
+  "anomalies": 1564,
+  "normal": 436,
+  "detection_rate_percent": 78.2,
+  "avg_confidence_percent": 89.74,
+  "elapsed_seconds": 13044.67,
+  "logs_per_second": 0.15,
+  "by_category": {
+    "Normal": 159,
+    "Brute Force SSH": 179,
+    "Port Scan": 186,
+    "SQL Injection": 201,
+    "DDoS": 172,
+    "XSS": 188,
+    "Path Traversal": 176,
+    "RCE": 172,
+    "Ransomware": 206,
+    "Insider Threat": 173,
+    "Malware": 188
+  },
+  "by_detected_by": {
+    "rules": 1655,
+    "llm": 0,
+    "fallback": 0,
+    "rules_fast": 345
+  }
+}

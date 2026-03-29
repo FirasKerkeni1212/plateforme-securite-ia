@@ -1,0 +1,51 @@
+{
+  "global": {
+    "total_logs": 2000,
+    "total_anomalies": 1352,
+    "detection_rate": "67.6%",
+    "brute_force_detection": "100.0%",
+    "port_scan_detection": "100.0%",
+    "false_positive_rate": "0.0%",
+    "avg_confidence": "85.0%",
+    "avg_time": "3.9507s",
+    "success_rate": "100%"
+  },
+  "by_scenario": {
+    "normal": {
+      "total_logs": 500,
+      "anomalies_detected": 0,
+      "detection_rate": "0.0%",
+      "avg_confidence": "85.0%",
+      "avg_time": "2.0327s",
+      "min_time": "2.0120s",
+      "max_time": "2.0905s"
+    },
+    "brute_force": {
+      "total_logs": 500,
+      "anomalies_detected": 500,
+      "detection_rate": "100.0%",
+      "avg_confidence": "85.0%",
+      "avg_time": "7.0564s",
+      "min_time": "2.0135s",
+      "max_time": "2515.0272s"
+    },
+    "port_scan": {
+      "total_logs": 500,
+      "anomalies_detected": 500,
+      "detection_rate": "100.0%",
+      "avg_confidence": "85.0%",
+      "avg_time": "2.0340s",
+      "min_time": "2.0154s",
+      "max_time": "2.2505s"
+    },
+    "mixte": {
+      "total_logs": 500,
+      "anomalies_detected": 352,
+      "detection_rate": "70.4%",
+      "avg_confidence": "85.0%",
+      "avg_time": "4.6795s",
+      "min_time": "2.0138s",
+      "max_time": "1324.8951s"
+    }
+  }
+}

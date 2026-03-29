@@ -1,0 +1,8 @@
+{
+  "event_id": "event_1769116801",
+  "timestamp": "2026-01-22T22:20:01Z",
+  "log": "Jan 22 18:10:08 server sshd[5678]: Failed password for invalid user admin from 176.10.99.200 port 57044 ssh2 [preauth] (attempt 46/50)\nJan 22 18:10:10 server sshd[5678]: Failed password for invalid user root from 176.10.99.200 port 48767 ssh2 [preauth] (attempt 35/50)\nJan 22 18:10:12 server sshd[5678]: Failed password for invalid user test from 91.200.12.74 port 50634 ssh2 [preauth] (attempt 20/50)",
+  "analysis": "Criticit\u00e9 : haute\nAction prioritaire : Configurer Fail2Ban pour surveiller et bloquer les adresses IP qui tentent de se connecter \u00e0 plusieurs fois sans succ\u00e8s.\nJustification : La configuration rapide d'un syst\u00e8me de filtrage bas\u00e9 sur des r\u00e8gles comme Fail2Ban est essentielle pour identifier imm\u00e9diatement les comportements suspects, ce qui permet une r\u00e9ponse proactive et efficace face aux tentatives persistantes de connexion non autoris\u00e9e. Cela limite \u00e9galement l'exposition potentielle \u00e0 un acc\u00e8s",
+  "remediation": "Actions propos\u00e9es par les agents",
+  "criticality": "Haute"
+}

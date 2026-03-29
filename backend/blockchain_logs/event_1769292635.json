@@ -1,0 +1,8 @@
+{
+  "event_id": "event_1769292635",
+  "timestamp": "2026-01-24T23:10:35Z",
+  "log": "Jan 22 18:25:10 server sshd[6010]: Invalid user test from 192.168.1.50 port 50000\nJan 22 18:25:15 server sshd[6015]: Accepted password for user charlie from 192.168.1.50 port 50001 ssh2",
+  "analysis": "Criticit\u00e9 : haute\nAction prioritaire : Configurer iptables pour bloquer toutes les connexions entrantes sur le port 50000.\nJustification : Cette action imm\u00e9diate r\u00e9duit la surface d'attaque et emp\u00eache toute tentative suppl\u00e9mentaire de connexion depuis ce port suspect, contribuant \u00e0 prot\u00e9ger l'infrastructure contre des acc\u00e8s non autoris\u00e9s potentiels.",
+  "remediation": "Actions propos\u00e9es par les agents",
+  "criticality": "Haute"
+}

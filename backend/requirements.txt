@@ -1,0 +1,12 @@
+Flask==3.1.4
+Flask-CORS==5.0.0
+requests==2.32.3
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+crewai==1.7.2
+langchain==0.1.17
+langchain-community==0.3.7
+fpdf==1.7.2          # Pour le PDF
+pandas==2.1.4        # Pour l'Excel/CSV
+openpyxl==3.1.2      # Pour l'Excel (.xlsx)
+werkzeug==3.0.1

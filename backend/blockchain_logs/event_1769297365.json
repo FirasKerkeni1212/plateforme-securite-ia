@@ -1,0 +1,8 @@
+{
+  "event_id": "event_1769297365",
+  "timestamp": "2026-01-25T00:29:25Z",
+  "log": "Jan 22 18:25:10 server sshd[6010]: Invalid user test from 192.168.1.50 port 50000\nJan 22 18:25:15 server sshd[6015]: Accepted password for user charlie from 192.168.1.50 port 50001 ssh2",
+  "analysis": "Criticit\u00e9 : haute\nAction prioritaire : Activer fail2ban pour surveiller en temps r\u00e9el\nJustification : Cette mesure imm\u00e9diate permet de bloquer les adresses IP suspect\u00e9es apr\u00e8s un nombre pr\u00e9d\u00e9fini d'\u00e9checs, ce qui contribue \u00e0 att\u00e9nuer le risque \u00e9lev\u00e9 actuel et limite l'acc\u00e8s potentiel aux donn\u00e9es sensibles.",
+  "remediation": "Actions propos\u00e9es par les agents",
+  "criticality": "Haute"
+}

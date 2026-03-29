@@ -1,0 +1,8 @@
+{
+  "event_id": "event_1768496704",
+  "timestamp": "2026-01-15T18:05:04Z",
+  "log": "Failed password for invalid user admin from 176.10.99.200 port 57044 ssh2 [preauth] (attempt 46/50)\nFailed password for invalid user root from 176.10.99.200 port 48767 ssh2 [preauth] (attempt 35/50)",
+  "analysis": "Criticit\u00e9 : haute\nAction prioritaire : Configurer fail2ban avec les r\u00e8gles appropri\u00e9es.\nJustification : La mise en place de fail2ban est une mesure imm\u00e9diate et efficace pour bloquer automatiquement l'acc\u00e8s des adresses IP qui tentent d'utiliser une attaque par force brute, ce qui r\u00e9duit directement le risque d'acc\u00e8s non autoris\u00e9 au syst\u00e8me SSH.",
+  "remediation": "Actions propos\u00e9es par les agents",
+  "criticality": "Haute"
+}
