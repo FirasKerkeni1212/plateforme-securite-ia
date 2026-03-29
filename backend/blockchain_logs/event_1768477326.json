@@ -1,0 +1,8 @@
+{
+  "event_id": "event_1768477326",
+  "timestamp": "2026-01-15T12:42:06Z",
+  "log": "Jan 15 11:01:26 server sshd[8196]: Failed password for invalid user test from 91.200.12.74 port 41600 ssh2 [preauth] (attempt 19/50)\nJan 15 11:01:28 server sshd[6174]: Failed password for invalid user admin from 176.10.99.200 port 33049 ssh2 [preauth] (attempt 47/50)\nJan 15 11:01:30 server sshd[8130]: Failed password for invalid user test from 176.10.99.200 port 33405 ssh2 [preauth] (attempt 15/50)",
+  "analysis": "Criticit\u00e9 : haute\nAction prioritaire : Configurer fail2ban avec des r\u00e8gles sp\u00e9cifiques \u00e0 l'anomalie, en ajustant les param\u00e8tres pour d\u00e9tecter plus de cinq \u00e9checs cons\u00e9cutifs d'acc\u00e8s non authentifi\u00e9s par adresse IP dans un laps de temps court.\nJustification : Cette action est prioritaire car elle offre une premi\u00e8re ligne de d\u00e9fense contre l'attaque actuelle en bloquant imm\u00e9diatement les connexions suspectes et en signalant des alertes pour intervention rapide, ce qui r\u00e9duit consid\u00e9rablement le ri",
+  "remediation": "Actions propos\u00e9es par les agents",
+  "criticality": "Haute"
+}

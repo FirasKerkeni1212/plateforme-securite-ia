@@ -1,0 +1,10 @@
+# monitoring/grafana/provisioning/datasources/prometheus.yml
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090  # ← CRUCIAL : nom du service Docker
+    isDefault: true
+    version: 1
+    editable: true
