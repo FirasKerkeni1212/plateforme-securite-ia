@@ -1,0 +1,19 @@
+<!DOCTYPE html><html><head><title>Rapport SOC</title>
+        <style>body{font-family:'Segoe UI',sans-serif;background:#1a252f;color:#ecf0f1;margin:0;padding:20px}
+        .container{max-width:1200px;margin:0 auto;background:#2c3e50;padding:30px;border-radius:10px}
+        h1{color:#3498db;text-align:center}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:20px 0}
+        .card{background:#34495e;padding:20px;border-radius:8px;text-align:center;border-left:5px solid #3498db}
+        .val{font-size:2em;font-weight:bold;color:#3498db}.lbl{color:#bdc3c7;text-transform:uppercase;font-size:0.8em}
+        table{width:100%;border-collapse:collapse;margin-top:20px}th{background:#3498db;color:#fff;padding:12px;text-align:left}
+        td{padding:10px;border-bottom:1px solid #34495e}.anom{color:#e74c3c;font-weight:bold}.norm{color:#2ecc71;font-weight:bold}
+        </style></head><body><div class="container">
+        <h1>🔒 Rapport Analyse Sécurité IA</h1>
+        <p style="text-align:center;color:#bdc3c7">Généré le: 02/04/2026 17:35:31</p>
+        <div class="stats">
+            <div class="card"><div class="val">5</div><div class="lbl">Logs Analysés</div></div>
+            <div class="card"><div class="val">5</div><div class="lbl">Anomalies</div></div>
+            <div class="card"><div class="val">100.0%</div><div class="lbl">Taux Détection</div></div>
+            <div class="card"><div class="val">94.6%</div><div class="lbl">Confiance Moy.</div></div>
+        </div>
+        <h2 style="color:#3498db;border-bottom:2px solid #3498db">Historique Détaillé</h2>
+        <table><thead><tr><th>N°</th><th>Log</th><th>Type</th><th>Criticité</th><th>Confiance</th><th>Heure</th></tr></thead><tbody><tr><td>1</td><td style='font-family:monospace;font-size:0.85em'>2026-03-29 14:35:12 CRITICAL [ProcessID: 8921] User 'admin' ...</td><td class='anom'>Ransomware</td><td>CRITIQUE</td><td>99%</td><td>2026-04-02 16:51:04</td></tr><tr><td>2</td><td style='font-family:monospace;font-size:0.85em'>Mar 16 12:27:00 server sshd[1926]: Failed password for inval...</td><td class='anom'>Brute Force SSH</td><td>HAUTE</td><td>95%</td><td>2026-04-02 17:06:57</td></tr><tr><td>3</td><td style='font-family:monospace;font-size:0.85em'>Mar 15 20:51:31 firewall kernel: PORT SCAN BLOCKED from 91.2...</td><td class='anom'>Port Scan</td><td>HAUTE</td><td>92%</td><td>2026-04-02 17:09:16</td></tr><tr><td>4</td><td style='font-family:monospace;font-size:0.85em'>Mar 15 20:50:28 server sshd[1129]: Failed password for inval...</td><td class='anom'>Brute Force SSH</td><td>HAUTE</td><td>95%</td><td>2026-04-02 17:10:25</td></tr><tr><td>5</td><td style='font-family:monospace;font-size:0.85em'>Mar 16 16:15:18 firewall kernel: PORT SCAN BLOCKED from 91.2...</td><td class='anom'>Port Scan</td><td>HAUTE</td><td>92%</td><td>2026-04-02 17:34:57</td></tr></tbody></table></div></body></html>
