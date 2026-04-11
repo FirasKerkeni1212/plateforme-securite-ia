@@ -157,13 +157,12 @@ const Dashboard = () => {
         <div style={{ textAlign: 'right' }}>
           <span style={{ color: '#00d2ff', marginRight: '10px', fontSize: '0.9rem' }}>
             {username} 
-            <span style={{ background: role === 'admin' ? '#ff4757' : '#2ed573', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '5px' }}>
-              {role.toUpperCase()}
+            <span style={{ background: role === 'admin' ? '' : '#2ed573', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '5px' }}>
             </span>
           </span>
           
           {role === 'admin' && (
-            <button onClick={() => setShowUserModal(true)} style={{ background: '#ffa502', border: 'none', color: 'white', padding: '5px 15px', borderRadius: '20px', cursor: 'pointer', marginRight: '10px' }}>
+            <button onClick={() => setShowUserModal(true)} style={{ background: '#00d2ff', border: 'none', color: 'white', padding: '5px 15px', borderRadius: '20px', cursor: 'pointer', marginRight: '10px' }}>
               👥 Gérer Users
             </button>
           )}
@@ -250,15 +249,15 @@ const Dashboard = () => {
       {/* LIGNE 2 : Graphiques */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '20px' }}>
         <div className="card" style={{ padding: '15px' }}>
-          <h4 style={{ color: '#ff4757', marginBottom: '10px', fontSize: '0.9rem' }}>📈 Tendances Détections</h4>
+          <h4 style={{ color: '#ff4757', marginBottom: '15px', fontSize: '0.9rem' }}>📈 Tendances Détections</h4>
           <div style={{ height: '250px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}><CartesianGrid strokeDasharray="3 3" stroke="#444" /><XAxis dataKey="name" hide /><YAxis stroke="#aaa" fontSize={10} /><Tooltip contentStyle={{ backgroundColor: '#2c5364', border: 'none' }} /><Legend wrapperStyle={{ fontSize: '12px' }} /><Line type="monotone" dataKey="Anomalies" stroke="#ff4757" strokeWidth={2} /><Line type="monotone" dataKey="Normal" stroke="#2ed573" strokeWidth={2} /></LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="card" style={{ padding: '15px' }}>
-          <h4 style={{ color: '#ff6b6b', marginBottom: '20px', fontSize: '0.9rem' }}>🥧 Classification des Logs</h4>
+        <div className="card" style={{ padding: '25px' }}>
+          <h4 style={{ color: '#ff6b6b', marginBottom: '15px', fontSize: '0.9rem' }}>🥧 Classification des Logs</h4>
           <div style={{ height: '250px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -266,14 +265,15 @@ const Dashboard = () => {
                   {classificationData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS_CLASS[index % COLORS_CLASS.length]} />))}
                 </Pie>
                 <Tooltip contentStyle={{ backgroundColor: '#2c5364', border: 'none' }} />
-                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px' }} />
+                <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="card" style={{ padding: '15px' }}>
-          <h4 style={{ color: '#ffa502', marginBottom: '20px', fontSize: '0.9rem' }}>⚠️ Répartition Criticité</h4>
-          <div style={{ height: '200px' }}>
+
+        <div className="card" style={{ padding: '25px' }}>
+          <h4 style={{ color: '#ffa502', marginBottom: '10px', fontSize: '0.9rem' }}>⚠️ Répartition Criticité</h4>
+          <div style={{ height: '250px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={criticalityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#444" />
@@ -288,7 +288,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-                <div className="card" style={{ padding: '15px' }}>
+        <div className="card" style={{ padding: '15px' }}>
           <h4 style={{ color: '#00d2ff', marginBottom: '10px', fontSize: '0.9rem' }}>🎯 Confiance par Analyse (%)</h4>
           <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px' }}>
              <div>
@@ -303,11 +303,12 @@ const Dashboard = () => {
              </div>
           </div>
         </div>
-        </div>
+      </div>
 
-      {/* LIGNE 3 : Chatbot & Historique + Filtres */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '400px' }}>
+      {/* LIGNE 3 : Chatbot & Filtres (Côte à côte) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginBottom: '20px' }}>
+        {/* Chatbot */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '350px' }}>
           <h3 style={{ color: '#00d2ff', marginBottom: '10px' }}>🤖 Assistant SOC</h3>
           <div style={{ flex: 1, overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '10px', marginBottom: '10px' }}>
             {chatMessages.map((msg, idx) => (<div key={idx} style={{ marginBottom: '8px', textAlign: msg.sender === 'user' ? 'right' : 'left' }}><span style={{ display: 'inline-block', padding: '6px 10px', borderRadius: '12px', background: msg.sender === 'user' ? '#00d2ff' : '#444', color: 'white', fontSize: '0.85rem' }}>{msg.text}</span></div>))}
@@ -318,28 +319,50 @@ const Dashboard = () => {
           </form>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="card">
-            <h3 style={{ color: '#00d2ff', marginBottom: '10px' }}>🕒 Historique Détaillé</h3>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {filteredHistory.length === 0 ? (<p style={{ color: '#aaa', textAlign: 'center', padding: '20px' }}>Aucun résultat trouvé.</p>) : (
-                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                  <thead><tr style={{ borderBottom: '2px solid #444', color: '#aaa' }}><th style={{ padding: '8px' }}>Heure</th><th style={{ padding: '8px' }}>Type</th><th style={{ padding: '8px' }}>Détail</th><th style={{ padding: '8px' }}>Criticité</th><th style={{ padding: '8px' }}>Confiance</th></tr></thead>
-                  <tbody>{filteredHistory.map((item) => (<tr key={item.id} style={{ borderBottom: '1px solid #333' }}><td style={{ padding: '8px', color: '#aaa' }}>{item.time}</td><td style={{ padding: '8px' }}><span style={{ color: item.isAnomaly ? '#ff4757' : '#2ed573', fontWeight: 'bold' }}>{item.type}</span></td><td style={{ padding: '8px', color: '#ddd', fontFamily: 'monospace', fontSize: '0.8rem' }}>{item.detail}</td><td style={{ padding: '8px', textTransform: 'uppercase', fontSize: '0.8rem', color: '#ffa502' }}>{item.criticality}</td><td style={{ padding: '8px', color: '#00d2ff' }}>{item.confidence}%</td></tr>))}</tbody>
-                </table>
-              )}
-            </div>
+        {/* Filtres */}
+        <div className="card">
+          <h3 style={{ color: '#00d2ff',  textAlign: 'center' }}>🔍 Filtres & Recherche</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px', alignItems: 'end', height: '100%' }}>
+            <div><label style={{ display: 'block', color: '#aaa', marginBottom: '5px', fontSize: '0.85rem' }}>Rechercher dans les logs :</label><input type="text" placeholder="IP, Type d'attaque, Mot-clé..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #444', background: 'rgba(0,0,0,0.3)', color: 'white', boxSizing: 'border-box' }} /></div>
+            <div><label style={{ display: 'block', color: '#aaa', marginBottom: '5px', fontSize: '0.85rem' }}>Classification :</label><select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #444', background: 'rgba(0,0,0,0.3)', color: 'white', boxSizing: 'border-box' }}><option value="all">Toutes (Normal/Anomalie)</option><option value="anomalie">Anomalie</option><option value="normal">Normal</option></select></div>
+            <div><label style={{ display: 'block', color: '#aaa', marginBottom: '5px', fontSize: '0.85rem' }}>Criticité :</label><select value={filterCrit} onChange={(e) => setFilterCrit(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #444', background: 'rgba(0,0,0,0.3)', color: 'white', boxSizing: 'border-box' }}><option value="all">Toutes Criticités</option><option value="critique">Critique</option><option value="haute">Haute</option><option value="moyenne">Moyenne</option><option value="basse">Basse</option></select></div>
+            <div style={{ gridColumn: '1 / -1', marginTop: '5px', color: '#2ed573', fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>Résultats filtrés : {filteredHistory.length} log(s)</div>
           </div>
+        </div>
+      </div>
 
-          <div className="card">
-            <h3 style={{ color: '#00d2ff', marginBottom: '15px', textAlign: 'center' }}>🔍 Filtres & Recherche</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '15px' }}>
-              <div><label style={{ display: 'block', color: '#aaa', marginBottom: '5px', fontSize: '0.85rem' }}>Rechercher dans les logs :</label><input type="text" placeholder="IP, Type d'attaque, Mot-clé..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #444', background: 'rgba(0,0,0,0.3)', color: 'white', boxSizing: 'border-box' }} /></div>
-              <div><label style={{ display: 'block', color: '#aaa', marginBottom: '5px', fontSize: '0.85rem' }}>Classification :</label><select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #444', background: 'rgba(0,0,0,0.3)', color: 'white', boxSizing: 'border-box' }}><option value="all">Toutes (Normal/Anomalie)</option><option value="anomalie">Anomalie</option><option value="normal">Normal</option></select></div>
-              <div><label style={{ display: 'block', color: '#aaa', marginBottom: '5px', fontSize: '0.85rem' }}>Criticité :</label><select value={filterCrit} onChange={(e) => setFilterCrit(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #444', background: 'rgba(0,0,0,0.3)', color: 'white', boxSizing: 'border-box' }}><option value="all">Toutes Criticités</option><option value="critique">Critique</option><option value="haute">Haute</option><option value="moyenne">Moyenne</option><option value="basse">Basse</option></select></div>
-            </div>
-            <div style={{ marginTop: '15px', color: '#2ed573', fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' }}>Résultats filtrés : {filteredHistory.length} log(s)</div>
-          </div>
+      {/* LIGNE 4 : Historique Détaillé (En bas, pleine largeur) */}
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <h3 style={{ color: '#00d2ff', marginBottom: '15px' }}>🕒 Historique Détaillé</h3>
+        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          {filteredHistory.length === 0 ? (
+            <p style={{ color: '#aaa', textAlign: 'center', padding: '40px' }}>Aucun résultat trouvé. Lancez une analyse ou ajustez les filtres.</p>
+          ) : (
+            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #444', color: '#aaa', position: 'sticky', top: 0, background: '#2c3e50' }}>
+                  <th style={{ padding: '12px 8px' }}>Heure</th>
+                  <th style={{ padding: '12px 8px' }}>Type</th>
+                  <th style={{ padding: '12px 8px' }}>Détail</th>
+                  <th style={{ padding: '12px 8px' }}>Criticité</th>
+                  <th style={{ padding: '12px 8px' }}>Confiance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredHistory.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: '1px solid #333' }}>
+                    <td style={{ padding: '12px 8px', color: '#aaa' }}>{item.time}</td>
+                    <td style={{ padding: '12px 8px' }}>
+                      <span style={{ color: item.isAnomaly ? '#ff4757' : '#2ed573', fontWeight: 'bold' }}>{item.type}</span>
+                    </td>
+                    <td style={{ padding: '12px 8px', color: '#ddd', fontFamily: 'monospace', fontSize: '0.85rem' }}>{item.detail}</td>
+                    <td style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.85rem', color: '#ffa502' }}>{item.criticality}</td>
+                    <td style={{ padding: '12px 8px', color: '#00d2ff', fontWeight: 'bold' }}>{item.confidence}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
