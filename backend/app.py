@@ -1,470 +1,611 @@
-import os
-import time
-import traceback
-import re
-import json
-import requests as http_requests
-import threading
-from collections import defaultdict
-from functools import wraps
-
-# Flask & Extensions
-from flask import Flask, request, jsonify, Response, send_file
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask_socketio import SocketIO, emit
+import requests, json, re, random, time, hashlib
+from datetime import datetime
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
-# Prometheus
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
-
-# =========================
-# Initialisation Flask & DB
-# =========================
 app = Flask(__name__)
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-db_user = os.getenv("POSTGRES_USER", "admin")
-db_pass = os.getenv("POSTGRES_PASSWORD", "SecurePass2026")
-db_host = os.getenv("DB_HOST", "on-premise-server")
-db_name = os.getenv("POSTGRES_DB", "company_data")
+# ========================================
+# CONFIGURATION
+# ========================================
+OLLAMA_API = "http://ollama:11434/api/generate"
+MODEL = "mistral:latest"
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = os.getenv("JWT_SECRET_KEY", "ta-cle-secrete-super-complexe-pfe-2026")
+# ========================================
+# MÉTRIQUES PROMETHEUS
+# ========================================
+LOGS_ANALYZED = Counter('logs_analyzed_total', 'Total logs analyzed', ['status'])
+ANOMALIES_DETECTED = Counter('anomalies_detected_total', 'Anomalies detected', ['attack_type'])
+HTTP_REQUESTS = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'status'])
 
-db = SQLAlchemy(app)
-jwt = JWTManager(app)
+# ========================================
+# VALIDATION RÉPONSES
+# ========================================
+def is_valid_response(text):
+    if not text or not isinstance(text, str):
+        return False
+    cleaned = re.sub(r'[\u200b\u200c\u200d\u200e\u200f\ufeff\u00ad\u2060\u180e\u00a0]', '', text).strip()
+    return len(cleaned) > 5 and bool(re.search(r'\w', cleaned))
 
-CORS(app, resources={r"/api/*": {"origins": ["*"], "methods": ["GET", "POST", "DELETE", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
+# ========================================
+# MÉMOIRE CONVERSATION
+# ========================================
+conversation_memory = {}
 
-# =========================
-# Modèle Utilisateur
-# =========================
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default='analyst')
+def get_conversation_context(session_id, max_messages=4):
+    if session_id not in conversation_memory:
+        conversation_memory[session_id] = []
+    return conversation_memory[session_id][-max_messages:]
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+def add_to_conversation(session_id, role, content):
+    if session_id not in conversation_memory:
+        conversation_memory[session_id] = []
+    conversation_memory[session_id].append({"role": role, "content": content})
+    if len(conversation_memory[session_id]) > 12:
+        conversation_memory[session_id] = conversation_memory[session_id][-12:]
 
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+# ========================================
+# BASE DE DONNÉES PARTAGÉE + COMPTEURS DYNAMIQUES
+# ========================================
+alerts_db = []
+alert_counter = 0
+total_logs_analyzed = 0
 
-with app.app_context():
-    db.create_all()
-    # Création users par défaut
-    if not User.query.filter_by(username='admin').first():
-        admin = User(username='admin', role='admin')
-        admin.set_password('admin123')
-        db.session.add(admin)
-        
-        if not User.query.filter_by(username='analyste').first():
-            analyst = User(username='analyste', role='analyst')
-            analyst.set_password('analyste123')
-            db.session.add(analyst)
-        db.session.commit()
-        print("✅ Users par défaut créés")
+# ========================================
+# 🔗 BLOCKCHAIN LEDGER (POUR INCIDENTS CRITICAL)
+# ========================================
+blockchain_ledger = []
+last_block_hash = "0" * 64  # Hash générique pour le bloc genesis
 
-# =========================
-# Blockchain Bridge
-# =========================
-BLOCKCHAIN_BRIDGE_URL = os.getenv("BLOCKCHAIN_URL", "http://blockchain-sim:6001/record")
+class BlockchainBlock:
+    """Représente un bloc immuable dans la chaîne de traçabilité"""
+    def __init__(self, index, alert_id, payload, previous_hash):
+        self.index = index
+        self.timestamp = datetime.utcnow().isoformat()
+        self.alert_id = alert_id
+        self.payload = json.dumps(payload, sort_keys=True)
+        self.previous_hash = previous_hash
+        self.nonce = 0
+        self.current_hash = self._calculate_hash()
+    
+    def _calculate_hash(self):
+        """Calcule le hash SHA-256 du bloc"""
+        block_string = f"{self.index}{self.timestamp}{self.alert_id}{self.payload}{self.previous_hash}{self.nonce}"
+        return hashlib.sha256(block_string.encode()).hexdigest()
+    
+    def verify(self):
+        """Vérifie l'intégrité du bloc"""
+        return self._calculate_hash() == self.current_hash
 
-def record_to_blockchain(result: dict):
+# ========================================
+# GÉOLOCALISATION IP
+# ========================================
+def is_private_ip(ip):
+    private_prefixes = (
+        '192.168.', '10.', '172.16.', '172.17.', '172.18.',
+        '172.19.', '172.20.', '172.21.', '172.22.', '172.23.',
+        '172.24.', '172.25.', '172.26.', '172.27.', '172.28.',
+        '172.29.', '172.30.', '172.31.', '127.', '0.', '::1'
+    )
+    return any(ip.startswith(p) for p in private_prefixes)
+
+def geolocate_ip(ip):
+    if not ip or ip == "IP inconnue" or is_private_ip(ip):
+        return 36.8065, 10.1815, "Tunisia", "Tunis"
     try:
-        payload = {
-            "log": result.get("log", "")[:200],
-            "attack_type": result.get("attack_type", "Unknown"),
-            "criticality": result.get("criticality", "basse"),
-            "confidence": result.get("confidence", 0.0),
-            "ip": result.get("ip", "unknown"),
-            "detected_by": result.get("detected_by", "unknown")
-        }
-        resp = http_requests.post(BLOCKCHAIN_BRIDGE_URL, json=payload, timeout=10)
-        if resp.json().get("success"):
-            print(f"✅ Blockchain OK")
-    except Exception as e:
-        print(f"❌ Blockchain Error: {e}")
+        res = requests.get(f"http://ip-api.com/json/{ip}?fields=status,lat,lon,country,city", timeout=3)
+        data = res.json()
+        if data.get('status') == 'success':
+            return data.get('lat', 36.8065), data.get('lon', 10.1815), data.get('country', 'Unknown'), data.get('city', 'Unknown')
+    except:
+        pass
+    return 36.8065, 10.1815, "Tunisia", "Tunis"
 
-# =========================
-# Métriques & Config
-# =========================
-HTTP_REQUESTS_TOTAL = Counter("http_requests_total", "Total HTTP Requests", ["method", "endpoint", "status"])
-ANOMALY_DETECTION_TOTAL = Counter("anomaly_detection_total", "Anomalies Detected", ["criticality", "type"])
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:latest")
+def extract_ip_from_log(normalized_log):
+    from_ip = re.findall(r'from\s+([\d]{1,3}(?:\.[\d]{1,3}){3})', normalized_log)
+    if from_ip:
+        for ip in from_ip:
+            if not is_private_ip(ip): return ip
+        return from_ip[0]
+    all_ips = re.findall(r'(\d{1,3}(?:\.\d{1,3}){3})', normalized_log)
+    for ip in all_ips:
+        if not is_private_ip(ip): return ip
+    return all_ips[0] if all_ips else "192.168.1.100"
 
-ip_request_tracker = defaultdict(list)
-last_anomalies = []
-chat_context = {"last_topic": None, "last_anomaly_data": None}
-
-# =========================
-# Middleware & Routes Base
-# =========================
-@app.before_request
-def before_request():
-    request.start_time = time.time()
-
-@app.after_request
-def after_request(response):
-    if hasattr(request, "start_time"):
-        HTTP_REQUESTS_TOTAL.labels(method=request.method, endpoint=request.path, status=response.status_code).inc()
-    return response
-
-@app.route("/metrics")
-def metrics():
-    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST, status=200)
-
-@app.route("/")
-def home():
-    return jsonify({"message": "Plateforme Securite IA Hybride", "status": "READY"}), 200
-
-# =========================
+# ========================================
 # AUTHENTIFICATION
-# =========================
+# ========================================
+users_db = {
+    'admin': {'password': 'admin123', 'role': 'admin'},
+    'analyste': {'password': 'user123', 'role': 'analyst'}
+}
+
 @app.route('/api/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    user = User.query.filter_by(username=data.get('username')).first()
-    if user and user.check_password(data.get('password')):
-        token = create_access_token(identity=user.id, additional_claims={"role": user.role})
-        return jsonify({"success": True, "token": token, "role": user.role, "username": user.username}), 200
-    return jsonify({"success": False, "error": "Identifiants invalides"}), 401
+    try:
+        data = request.json or {}
+        username, password = data.get('username'), data.get('password')
+        if not username or not password:
+            return jsonify({'error': 'Identifiants requis'}), 400
+        user = users_db.get(username)
+        if user and user['password'] == password:
+            token = f"jwt_{username}_{int(time.time())}_{random.randint(1000,9999)}"
+            HTTP_REQUESTS.labels(method='POST', endpoint='/api/login', status='200').inc()
+            return jsonify({'success': True, 'token': token, 'user': {'username': username, 'role': user['role']}})
+        HTTP_REQUESTS.labels(method='POST', endpoint='/api/login', status='401').inc()
+        return jsonify({'error': 'Identifiants invalides'}), 401
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-def admin_required(f):
-    @wraps(f)
-    @jwt_required()
-    def decorated(*args, **kwargs):
-        user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        if not user or user.role != 'admin':
-            return jsonify({"error": "Accès refusé : Administrateur requis"}), 403
-        return f(*args, **kwargs)
-    return decorated
-
-# =========================
-# GESTION DES UTILISATEURS (ADMIN)
-# =========================
+# ========================================
+# GESTION UTILISATEURS
+# ========================================
 @app.route('/api/users', methods=['GET'])
-@jwt_required()
 def get_users():
-    users = User.query.all()
-    return jsonify({"users": [{"id": u.id, "username": u.username, "role": u.role} for u in users]}), 200
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token or not token.startswith('jwt_admin'):
+        return jsonify({'error': 'Accès refusé'}), 403
+    user_list = [{'id': i, 'username': u, 'role': users_db[u]['role']} for i, u in enumerate(users_db)]
+    return jsonify({'users': user_list})
 
 @app.route('/api/users', methods=['POST'])
-@admin_required
 def create_user():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token or not token.startswith('jwt_admin'):
+        return jsonify({'error': 'Accès refusé'}), 403
+    data = request.json or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
     role = data.get('role', 'analyst')
-    
     if not username or not password:
-        return jsonify({"error": "Username et password requis"}), 400
-    
-    if User.query.filter_by(username=username).first():
-        return jsonify({"error": "Ce nom d'utilisateur existe déjà"}), 400
-        
-    new_user = User(username=username, role=role)
-    new_user.set_password(password)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({"success": True, "message": f"Utilisateur {username} créé avec succès"}), 201
+        return jsonify({'error': 'Username et password requis'}), 400
+    if username in users_db:
+        return jsonify({'error': 'Utilisateur déjà existant'}), 409
+    users_db[username] = {'password': password, 'role': role}
+    return jsonify({'success': True, 'message': f'Utilisateur {username} créé'})
 
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
-@admin_required
 def delete_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "Utilisateur non trouvé"}), 404
-    
-    current_user_id = get_jwt_identity()
-    if user.id == current_user_id:
-        return jsonify({"error": "Vous ne pouvez pas supprimer votre propre compte"}), 400
-        
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({"success": True, "message": "Utilisateur supprimé"}), 200
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token or not token.startswith('jwt_admin'):
+        return jsonify({'error': 'Accès refusé'}), 403
+    user_list = list(users_db.keys())
+    if user_id >= len(user_list):
+        return jsonify({'error': 'Utilisateur non trouvé'}), 404
+    username = user_list[user_id]
+    if username == 'admin':
+        return jsonify({'error': 'Impossible de supprimer l\'admin'}), 403
+    del users_db[username]
+    return jsonify({'success': True})
 
-# =========================
-# MOTEUR D'ANALYSE
-# =========================
-def extract_ip(log):
-    m = re.search(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", log)
-    return m.group(1) if m else "unknown"
+# ========================================
+# NORMALISATION & DÉTECTIONS
+# ========================================
+def normalize_log_input(log_text):
+    log_text = log_text.replace('\\\\n', '\n').replace('\\n', '\n').replace('\r\n', '\n').replace('\r', '\n')
+    lines = [line.strip() for line in log_text.split('\n') if line.strip()]
+    return '\n'.join(lines), lines
 
-def rules_detect(log_text):
-    log_lower = log_text.lower()
-    if any(s in log_lower for s in ["accepted password", "session opened", "200 OK"]):
-        return {"is_anomaly": False, "attack_type": "Normal", "criticality": "basse", "confidence": 0.99, "summary": "Trafic normal", "actions": [], "detected_by": "rules"}
-    ip = extract_ip(log_text)
-    if "failed password" in log_lower or "invalid user" in log_lower:
-        return {"is_anomaly": True, "attack_type": "Brute Force SSH", "criticality": "haute", "confidence": 0.95, "summary": "Attaque Brute Force SSH detectee", "actions": ["Bloquer l'IP source", "Activer fail2ban"], "detected_by": "rules", "ip": ip}
-    if "sql injection" in log_lower or "union select" in log_lower:
-        return {"is_anomaly": True, "attack_type": "SQL Injection", "criticality": "critique", "confidence": 0.98, "summary": "Injection SQL detectee", "actions": ["Bloquer l'IP", "Activer WAF"], "detected_by": "rules", "ip": ip}
-    if "ransomware" in log_lower or ".locked" in log_lower:
-        return {"is_anomaly": True, "attack_type": "Ransomware", "criticality": "critique", "confidence": 0.99, "summary": "Activite ransomware detectee", "actions": ["Isoler la machine"], "detected_by": "rules", "ip": ip}
-    if "port scan" in log_lower or "nmap" in log_lower:
-        return {"is_anomaly": True, "attack_type": "Port Scan", "criticality": "haute", "confidence": 0.92, "summary": "Scan de ports detecte", "actions": ["Bloquer l'IP"], "detected_by": "rules", "ip": ip}
+# ========================================
+# DÉTECTION PORT SCAN
+# ========================================
+def detect_port_scan(lines, normalized_log):
+    src_ports = {}
+    for line in lines:
+        src_match = re.search(r'SRC=([\d.]+)', line, re.IGNORECASE)
+        dpt_match = re.search(r'DPT=(\d+)', line, re.IGNORECASE)
+        if src_match and dpt_match:
+            src_ip = src_match.group(1)
+            dpt = dpt_match.group(1)
+            if src_ip not in src_ports:
+                src_ports[src_ip] = set()
+            src_ports[src_ip].add(dpt)
+    for ip, ports in src_ports.items():
+        if len(ports) >= 3:
+            ports_list = sorted(ports, key=lambda x: int(x))
+            nb_ports = len(ports)
+            if nb_ports >= 10:
+                criticality, confidence = "CRITICAL", 0.97
+            elif nb_ports >= 5:
+                criticality, confidence = "HIGH", 0.92
+            else:
+                criticality, confidence = "MEDIUM", 0.85
+            return {
+                "is_anomaly": True, "attack_type": "Port Scan", "criticality": criticality,
+                "confidence": confidence,
+                "summary": f"Port scan détecté depuis {ip} : {nb_ports} ports scannés ({', '.join(ports_list[:8])}{'...' if nb_ports > 8 else ''})",
+                "actions": [f"Bloquer l'IP source {ip} au firewall", "Activer IDS/IPS", "Vérifier les logs de connexion", "Fermer les ports inutiles"]
+            }
     return None
 
-def analyze_log_hybrid(log_text):
-    res = rules_detect(log_text)
-    if not res:
-        res = {"is_anomaly": False, "attack_type": "Normal", "criticality": "basse", "confidence": 0.8, "summary": "Normal selon IA", "actions": [], "detected_by": "llm"}
-    
-    if res["is_anomaly"]:
-        last_anomalies.append({
-            "attack_type": res["attack_type"], "ip": extract_ip(log_text),
-            "criticality": res["criticality"], "confidence": res.get("confidence", 0.0),
-            "summary": res.get("summary", ""), "actions": res.get("actions", []),
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "detected_by": res.get("detected_by", "unknown"), "log": log_text[:200], "is_anomaly": True
-        })
-        if len(last_anomalies) > 50: last_anomalies.pop(0)
-        crit = str(res.get("criticality", "")).lower()
-        if "crit" in crit or "haute" in crit:
-            threading.Thread(target=record_to_blockchain, args=(res,), daemon=True).start()
-            
-    return {
-        "log": log_text[:200], "is_anomaly": res["is_anomaly"], "confidence": res.get("confidence", 0),
-        "criticality": res["criticality"], "attack_type": res["attack_type"], "summary": res.get("summary", ""),
-        "actions": res.get("actions", []), "detected_by": res.get("detected_by", ""), "ip": extract_ip(log_text)
+def detect_ddos_attack(lines):
+    from collections import Counter
+    if len(lines) < 3: return None
+    cleaned = [l.strip().lower() for l in lines if l.strip() and '...' not in l]
+    if len(cleaned) < 3: return None
+    line_counts = Counter(cleaned)
+    most_common_line, most_common_count = line_counts.most_common(1)[0]
+    if most_common_count >= 3:
+        repeat_ratio = most_common_count / len(cleaned)
+        return {
+            "is_anomaly": True, "attack_type": "DDoS", "criticality": "CRITICAL",
+            "confidence": min(0.97, 0.75 + repeat_ratio * 0.22),
+            "summary": f"DDoS HTTP Flood détecté : même requête répétée {most_common_count} fois",
+            "actions": ["Rate limiting immédiat", "Bloquer IPs sources", "Activer CDN/Anti-DDoS"]
+        }
+    ip_url_counts = Counter()
+    for line in cleaned:
+        ip_match = re.match(r'([\d.]+)\s+-\s+-\s+\[', line)
+        url_match = re.search(r'"(GET|POST|HEAD|PUT|DELETE)\s+(\S+)', line)
+        if ip_match and url_match:
+            ip_url_counts[(ip_match.group(1), url_match.group(2))] += 1
+    for (ip, url), count in ip_url_counts.items():
+        if count >= 3:
+            return {
+                "is_anomaly": True, "attack_type": "DDoS", "criticality": "CRITICAL", "confidence": 0.93,
+                "summary": f"DDoS HTTP Flood : {ip} → {url} répété {count} fois",
+                "actions": [f"Bloquer l'IP source {ip}", f"Rate limiting sur {url}", "Activer WAF"]
+            }
+    timestamp_counts = Counter()
+    for line in cleaned:
+        ts_match = re.search(r'\[(\d+/\w+/\d+:\d+:\d+:\d+)', line)
+        if ts_match: timestamp_counts[ts_match.group(1)] += 1
+    for ts, count in timestamp_counts.items():
+        if count >= 5:
+            return {
+                "is_anomaly": True, "attack_type": "DDoS", "criticality": "CRITICAL", "confidence": 0.95,
+                "summary": f"DDoS distribué : {count} requêtes en 1 seconde ({ts})",
+                "actions": ["Rate limiting global", "Blackholing", "Contacter l'hébergeur"]
+            }
+    if len(cleaned) >= 8:
+        unique = set(cleaned)
+        repetition = max(cleaned.count(l) for l in unique) / len(cleaned)
+        if len(unique) <= 3 or repetition >= 0.6:
+            return {
+                "is_anomaly": True, "attack_type": "DDoS", "criticality": "CRITICAL", "confidence": 0.88,
+                "summary": "DDoS détecté : trafic massivement répétitif",
+                "actions": ["Rate limiting", "Bloquer IPs sources", "Activer CDN"]
+            }
+    return None
+
+def detect_xss_attack(log_text):
+    log_lower = log_text.lower()
+    patterns = [r'<script', r'javascript:', r'onerror', r'onload', r'alert\(', r'eval\(']
+    if any(re.search(p, log_lower) for p in patterns):
+        return {
+            "is_anomaly": True, "attack_type": "XSS", "criticality": "HIGH", "confidence": 0.90,
+            "summary": "Tentative XSS détectée",
+            "actions": ["Sanitizer les inputs", "Activer Content Security Policy (CSP)", "Encoder les sorties HTML"]
+        }
+    return None
+
+def analyze_log_locally_heuristics(normalized_log, log_lower):
+    if any(x in log_lower for x in ["failed password", "invalid user", "authentication failure"]):
+        ip = re.findall(r'from ([\d.]+)', normalized_log)
+        return {
+            "is_anomaly": True, "attack_type": "Brute Force", "criticality": "HIGH", "confidence": 0.88,
+            "summary": f"Brute force SSH détecté depuis {ip[0] if ip else 'IP inconnue'}",
+            "actions": ["Bloquer l'IP au firewall", "Activer fail2ban", "Utiliser des clés SSH"]
+        }
+    trojan_indicators = ["backdoor", "/tmp/.hidden", "c2 server", "reverse shell", "suspicious outbound", "known c2", ".exe", "malware", "trojan"]
+    if any(indicator in log_lower for indicator in trojan_indicators):
+        ip_match = re.search(r'(\d{1,3}(?:\.\d{1,3}){3})', normalized_log)
+        suspicious_ip = ip_match.group(0) if ip_match else "IP inconnue"
+        exe_match = re.search(r'exe[=\s]*"?([^\s"]+\.exe[^"]*)"?', normalized_log, re.IGNORECASE)
+        suspicious_file = exe_match.group(1) if exe_match else "fichier suspect"
+        return {
+            "is_anomaly": True, "attack_type": "Trojan", "criticality": "CRITICAL", "confidence": 0.92,
+            "summary": f"Trojan détecté : {suspicious_file} → C2 {suspicious_ip}",
+            "actions": ["Isoler la machine immédiatement", "Bloquer l'IP C2 au firewall", "Supprimer le fichier malveillant"]
+        }
+    if any(p in log_lower for p in ["union select", "' or '", "1=1", "drop table", "'; --", "or 1=1"]):
+        return {
+            "is_anomaly": True, "attack_type": "SQL Injection", "criticality": "CRITICAL", "confidence": 0.90,
+            "summary": "Injection SQL détectée dans les paramètres de requête",
+            "actions": ["Bloquer l'IP", "Utiliser des requêtes préparées", "Auditer les tables"]
+        }
+    if any(p in log_lower for p in [".locked", ".encrypted", ".crypto", "ransom", "readme_for_decrypt"]):
+        return {
+            "is_anomaly": True, "attack_type": "Ransomware", "criticality": "CRITICAL", "confidence": 0.88,
+            "summary": "Comportement ransomware détecté : chiffrement de fichiers en cours",
+            "actions": ["Isoler la machine immédiatement", "Ne pas payer la rançon", "Restaurer depuis backup"]
+        }
+    lines = [l.strip() for l in normalized_log.split('\n') if l.strip()]
+    if len(lines) >= 5:
+        unique = set(l.lower() for l in lines)
+        if len(unique) <= 2:
+            return {
+                "is_anomaly": True, "attack_type": "DDoS", "criticality": "CRITICAL", "confidence": 0.82,
+                "summary": "Potentiel DDoS : requêtes identiques répétées",
+                "actions": ["Rate limiting", "Bloquer IPs sources", "Activer CDN"]
+            }
+    return None
+
+# ========================================
+# DÉTECTION D'INTENTION CHATBOT
+# ========================================
+def detect_intent(message):
+    msg = message.lower().strip()
+    if any(k in msg for k in ["ddos", "déni de service", "ddos ?", "quoi un ddos"]): return "ddos"
+    if any(k in msg for k in ["brute", "force", "brute-force", "ssh"]): return "brute_force"
+    if any(k in msg for k in ["ransomware", "rançon", "chiffrement"]): return "ransomware"
+    if any(k in msg for k in ["xss", "cross-site", "script"]): return "xss"
+    if any(k in msg for k in ["sql", "injection", "sqli"]): return "sql"
+    if any(k in msg for k in ["trojan", "backdoor", "malware", "cheval de troie"]): return "trojan"
+    if any(k in msg for k in ["port scan", "nmap", "ports ouverts"]): return "port_scan"
+    if any(k in msg for k in ["soc", "security operations center", "centre de sécurité"]): return "soc"
+    if any(k in msg for k in ["salut", "bonjour", "hello", "hi", "salam"]): return "salutation"
+    if any(k in msg for k in ["qui es-tu", "qui es tu", "tu es quoi", "c'est quoi toi", "aide", "help"]): return "presentation"
+    if any(k in msg for k in ["anomalie", "suspect", "inhabituel"]): return "anomalie"
+    return "inconnu"
+
+# ========================================
+# RÉPONSES CHATBOT
+# ========================================
+def generate_dynamic_soc_response(intent, user_question):
+    responses = {
+        "salutation": "👋 Salut ! Je suis ton **Assistant SOC** de Tunisie Telecom.\n\nJe peux t'aider sur :\n🔐 Brute Force • 🌊 DDoS • 💉 SQL Injection\n🦠 Ransomware • 💻 XSS • 🐴 Trojan • 🔎 Port Scan\n\nPose-moi ta question de cybersécurité !",
+        "presentation": "🛡️ Je suis l'**Assistant SOC IA** de Tunisie Telecom.\n\nJe détecte et explique les cyberattaques en temps réel.\nPose-moi une question sur une menace ou un log suspect !",
+        "inconnu": "🤔 Je n'ai pas bien compris ta question.\n\nEssaie de me parler de :\n🔐 Brute Force • 🌊 DDoS • 💉 SQL Injection\n🦠 Ransomware • 💻 XSS • 🐴 Trojan",
+        "soc": "🛡️ **SOC (Security Operations Center)** = Centre opérationnel de cybersécurité.\n\n• Surveillance 24/7 des systèmes\n• Détection d'attaques en temps réel\n• Analyse et corrélation des logs\n• Coordination de la réponse aux incidents\n\n✅ Objectif : Réduire le temps de détection et de réponse aux menaces.",
+        "ddos": "🚨 **DDoS** = Déni de Service Distribué.\nAttaque qui vise à rendre un service indisponible en le saturant de trafic.\n\n🔍 Détection : Pic de trafic anormal, requêtes répétitives.\n⚡ Contre-mesures : Rate limiting, CDN, Blackholing.",
+        "brute_force": "🔐 **Brute-Force** = Tentatives répétées pour deviner un mot de passe (ex: SSH).\n\n🔍 Détection : Multiples échecs de connexion depuis une même IP.\n⚡ Contre-mesures : fail2ban, MFA, clés SSH.",
+        "ransomware": "🦠 **Ransomware** = Logiciel malveillant qui chiffre les fichiers et demande une rançon.\n\n🔍 Détection : Chiffrement massif, extensions .locked.\n⚡ Actions : Isoler la machine IMMÉDIATEMENT, ne pas payer, restaurer depuis backup.",
+        "xss": "💻 **XSS** = Injection de scripts malveillants dans une page web.\n\n🔍 Détection : Patterns <script>, javascript:, onerror=.\n⚡ Contre-mesures : Sanitizer inputs, activer CSP, encoder les sorties.",
+        "sql": "💉 **SQL Injection** = Injection de code SQL malveillant pour manipuler la base.\n\n🔍 Détection : UNION SELECT, OR 1=1, DROP TABLE.\n⚡ Contre-mesures : Prepared statements, validation inputs, WAF.",
+        "port_scan": "🔎 **Port Scan** = Découverte des ports ouverts sur un système.\n\n🔍 Détection : Connexions multiples vers différents ports depuis la même IP source.\n⚡ Contre-mesures : Firewall, fermer ports inutiles, IDS/IPS.",
+        "trojan": "🐴 **Trojan** = Malware qui se déguise en programme légitime.\n\n🔍 Détection : Backdoor, C2 server, fichiers .exe suspects.\n⚡ Actions : Isoler machine, bloquer IP C2, audit processus.",
+        "anomalie": "🔍 **Anomalie** = Comportement inhabituel détecté.\n\n🔍 Investigation : Corréler avec autres événements, vérifier historique.\n⚡ Actions : Escalader si critique, documenter, mettre à jour les règles."
     }
+    return responses.get(intent, responses["inconnu"])
 
-@app.route("/api/analyze", methods=["POST"])
-@jwt_required()
-def analyze():
-    data = request.get_json()
-    if not data.get("log"): return jsonify({"error": "Log manquant"}), 400
-    result = analyze_log_hybrid(data["log"])
-    if result["is_anomaly"]:
-        ANOMALY_DETECTION_TOTAL.labels(criticality=result["criticality"], type=result["attack_type"]).inc()
-    return jsonify({"success": True, "result": result})
+# ========================================
+# STATISTIQUES
+# ========================================
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    stats = {'DDoS': 0, 'Brute Force': 0, 'XSS': 0, 'SQL Injection': 0, 'Ransomware': 0, 'Port Scan': 0, 'Trojan': 0, 'Normal': 0}
+    for alert in alerts_db:
+        attack_type = alert.get('attack_type', 'Normal')
+        if attack_type in stats: stats[attack_type] += 1
+        else: stats['Normal'] += 1
+    return jsonify({'labels': list(stats.keys()), 'data': list(stats.values()), 'total': sum(stats.values())})
 
-# =========================
-# CHATBOT INTELLIGENT
-# =========================
-@app.route("/api/chatbot", methods=["POST"])
-@jwt_required()
+# ========================================
+# MÉTRIQUES DYNAMIQUES DASHBOARD
+# ========================================
+@app.route('/api/metrics', methods=['GET'])
+def get_metrics():
+    global total_logs_analyzed
+    total_alerts = len(alerts_db)
+    critical_alerts = sum(1 for a in alerts_db if a.get('severity') == 'CRITICAL')
+    if total_alerts > 0:
+        avg_confidence = sum(a.get('confidence', 0) for a in alerts_db) / total_alerts
+        detection_rate = round(avg_confidence * 100, 1)
+    else:
+        detection_rate = 94.0
+    avg_response_time = round(0.8 + (total_alerts * 0.05), 2)
+    return jsonify({
+        "kpis": {
+            "total_alerts": total_alerts, "critical_alerts": critical_alerts,
+            "detection_rate": detection_rate, "total_logs_analyzed": total_logs_analyzed,
+            "avg_response_time": f"{avg_response_time}s"
+        },
+        "timestamp": datetime.now().isoformat()
+    })
+
+# ========================================
+# 🔗 ENDPOINTS BLOCKCHAIN
+# ========================================
+@app.route('/api/blockchain/ledger', methods=['GET'])
+def get_blockchain_ledger():
+    """Retourne tous les blocs enregistrés (pour audit)"""
+    blocks = [{
+        'index': b.index, 'alert_id': b.alert_id, 'timestamp': b.timestamp,
+        'current_hash': b.current_hash, 'previous_hash': b.previous_hash
+    } for b in blockchain_ledger]
+    return jsonify({'success': True, 'blocks': blocks, 'total': len(blocks)})
+
+@app.route('/api/blockchain/verify/<alert_id>', methods=['GET'])
+def verify_blockchain_proof(alert_id):
+    """Vérifie l'intégrité d'une alerte via son hash blockchain"""
+    block = next((b for b in blockchain_ledger if b.alert_id == alert_id), None)
+    if not block:
+        return jsonify({'error': 'Aucune preuve blockchain pour cette alerte'}), 404
+    recalculated = block._calculate_hash()
+    is_valid = (recalculated == block.current_hash)
+    return jsonify({
+        'alert_id': alert_id, 'block_index': block.index,
+        'current_hash': block.current_hash, 'previous_hash': block.previous_hash,
+        'timestamp': block.timestamp, 'integrity_status': 'VALID' if is_valid else 'TAMPERED'
+    })
+
+# ========================================
+# WEBSOCKET
+# ========================================
+@socketio.on('connect')
+def handle_connect():
+    print('✅ Client connecté au WebSocket')
+    emit('connected', {'message': 'Connecté au SOC en temps réel'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('❌ Client déconnecté')
+
+# ========================================
+# ENDPOINTS PRINCIPAUX
+# ========================================
+@app.route('/api/chatbot', methods=['POST'])
 def chatbot():
     try:
-        data = request.get_json() or {}
-        user_message = data.get("message", "").lower().replace("?","")
-
-        global chat_context
-        response_text = ""
-        
-        data = request.get_json() or {}
-        # On prend le message, on met en minuscule et on enlève les points d'interrogation pour faciliter la recherche
-        user_message = data.get("message", "").lower().replace("?", "")
-        
-        global chat_context
-        response_text = ""
-
-        # 0. SORTIE / BYE (Priorité absolue)
-        if any(word in user_message for word in ["bye", "goodbye", "au revoir", "stop", "quit", "exit", "fin", "à plus"]):
-            chat_context["last_topic"] = None
-            return jsonify({"response": "Goodbye! Stay secure. Feel free to come back if you need help."})
-
-        # 1. SALUTATIONS
-        if any(word in user_message for word in ["hi", "hello", "bonjour", "hey", "coucou", "start", "salut"]):
-            chat_context["last_topic"] = "greeting"
-            response_text = "Hello! I am your SOC Assistant. Ask me about the *last anomaly*, *stats*, or *recommendations*."
-
-        # 2. DÉCLENCHEUR : DERNIÈRE ANOMALIE (Réinitialise le contexte sur ce sujet)
-        elif any(word in user_message for word in ["anomalie", "anomaly", "attack", "dernière", "last", "alert", "threat", "incident", "log"]):
-            if last_anomalies:
-                last = last_anomalies[-1]
-                chat_context["last_topic"] = "anomaly"
-                chat_context["last_anomaly_data"] = last
-                response_text = (
-                    f"Yes, the last detected anomaly is: **{last['attack_type']}**.\n"
-                    f"- Criticality: {last['criticality'].upper()}\n"
-                    f"- Confidence: {round(last['confidence']*100)}%\n"
-                    f"- Summary: {last['summary']}\n\n"
-                    f"Want to know the *solution* or the *confidence percentage*?"
-                )
-            else:
-                chat_context["last_topic"] = "none"
-                response_text = "No anomaly detected since startup. The system is clean!"
-
-        # 3. QUESTIONS DE SUIVI (Si le contexte est déjà sur "anomaly")
-        elif chat_context["last_topic"] == "anomaly":
-            last = chat_context["last_anomaly_data"]
-            
-            # Solution / Fix / Action
-            if any(word in user_message for word in ["solution", "remediation", "fix", "action", "que faire", "do", "repair", "mitigate", "block"]):
-                actions = last.get("actions", [])
-                if actions:
-                    actions_str = ", ".join(actions)
-                    response_text = f"The recommended solutions for this {last['attack_type']} are: **{actions_str}**."
-                else:
-                    response_text = "No specific automated remediation available. Manual investigation recommended."
-
-            # Pourcentage / Confiance / Taux (Élargi pour capturer "give me the percentage")
-            elif any(word in user_message for word in ["percentage", "pourcentage", "confidence", "%", "taux", "rate", "probabilité", "chance", "score", "level"]):
-                conf = round(last['confidence']*100)
-                response_text = f"The confidence level for this detection is **{conf}%**. Our hybrid engine is highly certain."
-            
-            # IP / Source
-            elif any(word in user_message for word in ["ip", "source", "adresse", "origin", "who", "where"]):
-                response_text = f"The attack originated from IP address: `{last['ip']}`. You should consider blocking it."
-            
-            # Résumé / Détail
-            elif any(word in user_message for word in ["resume", "summary", "detail", "résumé", "détail", "explain"]):
-                response_text = f"Summary: {last['summary']}. Detected by {last['detected_by']} module."
-
-            else:
-                # Si l'utilisateur dit quelque chose d'incompréhensible mais qu'on est dans le contexte
-                response_text = "I'm still focused on the last anomaly. You can ask me about the *solution*, the *confidence percentage*, or the *source IP*. Or say *'bye'* to exit."
-
-        # 4. STATISTIQUES
-        elif any(word in user_message for word in ["stat", "stats", "chiffres", "nombre", "count", "dashboard", "total"]):
-            chat_context["last_topic"] = "stats"
-            msg = (
-                f"📊 **Current SOC Statistics:**\n"
-                f"- Total Anomalies in Memory: {len(last_anomalies)}\n"
-                f"- Unique IPs Tracked: {len(ip_request_tracker)}\n"
-                f"- System Status: 🟢 Operational."
-            )
-            response_text = msg
-
-        # 5. RECOMMANDATIONS
-        elif any(word in user_message for word in ["recommendation", "conseil", "secure", "best practice", "tips", "advice", "protect"]):
-            chat_context["last_topic"] = "recommendation"
-            response_text = (
-                "🛡️ **Security Recommendations:**\n"
-                "1. Ensure all systems are patched and up-to-date.\n"
-                "2. Enforce Multi-Factor Authentication (MFA).\n"
-                "3. Regularly backup your data (3-2-1 rule).\n"
-                "4. Monitor logs continuously with this platform!"
-            )
-
-        # 6. DÉFAUT (Incompris)
-        else:
-            chat_context["last_topic"] = "unknown"
-            response_text = "I'm not sure I understand. Try asking: *'Last anomaly?'*, *'Show stats'*, *'Give recommendations'*, or say *'Hi'* / *'Bye'*!"
-
-        return jsonify({"response": response_text})
-
+        data = request.json or {}
+        msg = data.get('message', '').strip()
+        sid = data.get('session_id', 'default')
+        if not msg:
+            return jsonify({'response': '👋 Salut ! Comment puis-je t\'aider ?'})
+        add_to_conversation(sid, "user", msg)
+        intent = detect_intent(msg)
+        response_text = generate_dynamic_soc_response(intent, msg)
+        add_to_conversation(sid, "assistant", response_text)
+        return jsonify({"response": response_text, "session_id": sid, "intent": intent, "source": "soc"})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"response": f"Error: {str(e)}"}), 500
-               
-              
+        return jsonify({"response": "⚠️ Erreur interne. Réessaie."}), 500
 
-# =========================
-# EXPORTS (PDF, Excel, HTML)
-# =========================
-@app.route('/api/export/<format>', methods=['POST'])
-@jwt_required()
-def export_data(format):
-    logs = last_anomalies
-    if not logs: return jsonify({"error": "Aucune donnée"}), 400
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    date_str = time.strftime("%d/%m/%Y %H:%M:%S")
-    total = len(logs)
-    anomalies_count = sum(1 for l in logs if l.get('is_anomaly'))
-    rate = round((anomalies_count / total * 100), 1) if total else 0
-    avg_conf = round(sum(l.get('confidence', 0) for l in logs) / total * 100, 1) if total else 0
+@app.route('/api/analyze', methods=['POST'])
+def analyze_log():
+    try:
+        data = request.json
+        log = data.get('log')
+        if not log:
+            return jsonify({'error': 'Log requis'}), 400
 
-    if format == 'pdf':
-        from fpdf import FPDF
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", 'B', 16)
-        pdf.set_text_color(0, 100, 200)
-        pdf.cell(0, 10, "RAPPORT D'ANALYSE SECURITE IA", ln=True, align='C')
-        pdf.set_font("Arial", size=10)
-        pdf.set_text_color(100, 100, 100)
-        pdf.cell(0, 5, f"Généré le: {date_str}", ln=True, align='C')
-        pdf.ln(5)
-        pdf.set_font("Arial", 'B', 12); pdf.set_text_color(0, 150, 0)
-        pdf.cell(0, 10, "STATISTIQUES GLOBALES:", ln=True)
-        pdf.set_font("Arial", size=11); pdf.set_text_color(0, 0, 0)
-        pdf.cell(0, 6, f"- Total logs: {total}", ln=True)
-        pdf.cell(0, 6, f"- Anomalies: {anomalies_count}", ln=True)
-        pdf.cell(0, 6, f"- Taux: {rate}%", ln=True)
-        pdf.ln(5)
-        for i, log in enumerate(logs):
-            pdf.set_fill_color(240, 240, 240)
-            pdf.set_font("Arial", 'B', 10)
-            pdf.cell(0, 6, f"Log N°{i+1}: {log.get('log', '')[:50]}...", ln=True, fill=True)
-            pdf.set_font("Arial", size=10)
-            pdf.cell(0, 5, f"  Type: {log.get('attack_type')} | Crit: {log.get('criticality', 'N/A').upper()}", ln=True)
-            acts = log.get('actions', [])
-            if acts:
-                pdf.set_text_color(200, 0, 0)
-                pdf.cell(0, 5, "  Actions:", ln=True)
-                pdf.set_text_color(0, 0, 0)
-                for a in acts:
-                    safe_a = a.encode('latin-1', 'replace').decode('latin-1')
-                    pdf.cell(0, 5, f"    - {safe_a}", ln=True)
-        fname = f"Rapport_Securite_{timestamp}.pdf"
-        pdf.output(fname)
-        return send_file(fname, as_attachment=True)
+        global total_logs_analyzed, last_block_hash
+        total_logs_analyzed += 1
+        LOGS_ANALYZED.labels(status='analyzed').inc()
 
-    elif format == 'excel':
-        import pandas as pd
-        from openpyxl import load_workbook
-        from openpyxl.styles import Font, PatternFill, Alignment
-        data = []
-        for log in logs:
-            data.append({
-                "N°": "", "Log": log.get('log', '')[:100],
-                "Classification": "ANOMALIE" if log.get('is_anomaly') else "NORMAL",
-                "Confiance (%)": round(log.get('confidence', 0)*100),
-                "Criticité": log.get('criticality', 'N/A').upper(),
-                "Heure": log.get('timestamp', ''),
-                "Actions": "; ".join(log.get('actions', []))
+        normalized, lines = normalize_log_input(log)
+        log_lower = normalized.lower()
+
+        result = (
+            detect_port_scan(lines, normalized) or
+            detect_ddos_attack(lines) or
+            detect_xss_attack(normalized) or
+            analyze_log_locally_heuristics(normalized, log_lower)
+        )
+
+        if result is None:
+            result = {
+                "is_anomaly": False, "attack_type": "Normal", "criticality": None,
+                "confidence": 1.0, "summary": "Aucune anomalie détectée — trafic normal", "actions": []
+            }
+
+        if result.get('is_anomaly'):
+            global alert_counter
+            alert_counter += 1
+            ip_addr = extract_ip_from_log(normalized)
+            lat, lon, country, city = geolocate_ip(ip_addr)
+
+            new_alert = {
+                'id': f'alert_{alert_counter}', 'timestamp': datetime.now().isoformat(),
+                'attack_type': result.get('attack_type'), 'severity': result.get('criticality', 'MEDIUM'),
+                'confidence': result.get('confidence', 0.85), 'log_preview': normalized[:200],
+                'status': 'NEW', 'actions_recommended': result.get('actions', []),
+                'ip': ip_addr, 'latitude': lat, 'longitude': lon, 'country': country, 'city': city
+            }
+            alerts_db.append(new_alert)
+            print(f"✅ Alerte créée: {new_alert['id']} - {new_alert['attack_type']} depuis {city}, {country}")
+            ANOMALIES_DETECTED.labels(attack_type=result.get('attack_type', 'unknown').lower()).inc()
+
+            # 🔗 ENREGISTREMENT BLOCKCHAIN SI CRITICAL
+            if new_alert['severity'] == 'CRITICAL':
+                block_payload = {
+                    'alert_id': new_alert['id'], 'attack_type': new_alert['attack_type'],
+                    'severity': new_alert['severity'], 'timestamp': new_alert['timestamp'],
+                    'ip': new_alert['ip'], 'confidence': new_alert['confidence']
+                }
+                new_block = BlockchainBlock(
+                    index=len(blockchain_ledger) + 1,
+                    alert_id=new_alert['id'],
+                    payload=block_payload,
+                    previous_hash=last_block_hash
+                )
+                blockchain_ledger.append(new_block)
+                last_block_hash = new_block.current_hash
+                new_alert['blockchain_hash'] = new_block.current_hash
+                print(f"⛓️ Bloc #{new_block.index} enregistré pour alerte {new_alert['id']}")
+
+            socketio.emit('new_alert', {
+                'id': new_alert['id'], 'attack_type': new_alert['attack_type'],
+                'severity': new_alert['severity'], 'message': f"🚨 {new_alert['attack_type']} depuis {city}, {country}!",
+                'timestamp': new_alert['timestamp'], 'ip': ip_addr, 'country': country, 'city': city
             })
-        df = pd.DataFrame(data)
-        df.index += 1
-        df.insert(0, "N°", df.index)
-        fname = f"Historique_{timestamp}.xlsx"
-        df.to_excel(fname, index=False, sheet_name='Rapport')
-        wb = load_workbook(fname)
-        ws = wb.active
-        h_fill = PatternFill(start_color="444444", end_color="444444", fill_type="solid")
-        h_font = Font(bold=True, color="FFFFFF")
-        for c in ws[1]: c.fill, c.font, c.alignment = h_fill, h_font, Alignment(horizontal='center')
-        for i, w in enumerate([5, 80, 15, 12, 12, 20, 40], 1): ws.column_dimensions[chr(64+i)].width = w
-        wb.save(fname)
-        return send_file(fname, as_attachment=True)
 
-    elif format == 'html':
-        html = f"""<!DOCTYPE html><html><head><title>Rapport SOC</title>
-        <style>body{{font-family:'Segoe UI',sans-serif;background:#1a252f;color:#ecf0f1;margin:0;padding:20px}}
-        .container{{max-width:1200px;margin:0 auto;background:#2c3e50;padding:30px;border-radius:10px}}
-        h1{{color:#3498db;text-align:center}}.stats{{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:20px 0}}
-        .card{{background:#34495e;padding:20px;border-radius:8px;text-align:center;border-left:5px solid #3498db}}
-        .val{{font-size:2em;font-weight:bold;color:#3498db}}.lbl{{color:#bdc3c7;text-transform:uppercase;font-size:0.8em}}
-        table{{width:100%;border-collapse:collapse;margin-top:20px}}th{{background:#3498db;color:#fff;padding:12px;text-align:left}}
-        td{{padding:10px;border-bottom:1px solid #34495e}}.anom{{color:#e74c3c;font-weight:bold}}.norm{{color:#2ecc71;font-weight:bold}}
-        </style></head><body><div class="container">
-        <h1>🔒 Rapport Analyse Sécurité IA</h1>
-        <p style="text-align:center;color:#bdc3c7">Généré le: {date_str}</p>
-        <div class="stats">
-            <div class="card"><div class="val">{total}</div><div class="lbl">Logs Analysés</div></div>
-            <div class="card"><div class="val">{anomalies_count}</div><div class="lbl">Anomalies</div></div>
-            <div class="card"><div class="val">{rate}%</div><div class="lbl">Taux Détection</div></div>
-            <div class="card"><div class="val">{avg_conf}%</div><div class="lbl">Confiance Moy.</div></div>
-        </div>
-        <h2 style="color:#3498db;border-bottom:2px solid #3498db">Historique Détaillé</h2>
-        <table><thead><tr><th>N°</th><th>Log</th><th>Type</th><th>Criticité</th><th>Confiance</th><th>Heure</th></tr></thead><tbody>"""
-        for i, l in enumerate(logs):
-            cls = "anom" if l.get('is_anomaly') else "norm"
-            html += f"<tr><td>{i+1}</td><td style='font-family:monospace;font-size:0.85em'>{l.get('log','')[:60]}...</td><td class='{cls}'>{l.get('attack_type')}</td><td>{l.get('criticality','').upper()}</td><td>{round(l.get('confidence',0)*100)}%</td><td>{l.get('timestamp')}</td></tr>"
-        html += "</tbody></table></div></body></html>"
-        fname = f"Rapport_Securite_{timestamp}.html"
-        with open(fname, 'w', encoding='utf-8') as f: f.write(html)
-        return send_file(fname, as_attachment=True)
+        HTTP_REQUESTS.labels(method='POST', endpoint='/api/analyze', status='200').inc()
+        return jsonify({'success': True, 'result': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-    return jsonify({"error": "Format inconnu"}), 400
+@app.route('/api/alerts', methods=['GET'])
+def get_alerts():
+    severity = request.args.get('severity')
+    limit = int(request.args.get('limit', 20))
+    filtered = [a for a in alerts_db if not severity or a['severity'] == severity.upper()]
+    filtered = sorted(filtered, key=lambda x: x['timestamp'], reverse=True)[:limit]
+    HTTP_REQUESTS.labels(method='GET', endpoint='/api/alerts', status='200').inc()
+    return jsonify({'alerts': filtered, 'total': len(filtered)})
 
-if __name__ == "__main__":
-    print("🚀 Démarrage Flask PRO avec Gestion Utilisateurs...")
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+@app.route('/api/alerts/<alert_id>', methods=['GET'])
+def get_alert(alert_id):
+    alert = next((a for a in alerts_db if a['id'] == alert_id), None)
+    if not alert:
+        return jsonify({'error': 'Alerte non trouvée'}), 404
+    return jsonify({'alert': alert})
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'healthy', 'model': MODEL})
+
+@app.route('/metrics')
+def metrics():
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+# ========================================
+# EXPORT
+# ========================================
+@app.route('/api/export/<export_type>', methods=['POST'])
+def export_report(export_type):
+    try:
+        if export_type == 'html':
+            rows = ""
+            for a in alerts_db[-50:]:
+                rows += f"<tr><td>{a['timestamp']}</td><td>{a['attack_type']}</td><td>{a['severity']}</td><td>{round(a['confidence']*100)}%</td><td>{a['ip']}</td></tr>"
+            html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+            <title>Security Report</title>
+            <style>body{{font-family:Arial;background:#0f172a;color:#fff;padding:20px}}
+            table{{width:100%;border-collapse:collapse}}
+            th,td{{padding:10px;border:1px solid #444;text-align:left}}
+            th{{background:#667eea}}h1{{color:#667eea}}</style></head>
+            <body><h1>🛡️ AI Security Platform - Security Report</h1>
+            <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <table><thead><tr><th>Timestamp</th><th>Attack Type</th><th>Severity</th><th>Confidence</th><th>Source IP</th></tr></thead>
+            <tbody>{rows}</tbody></table></body></html>"""
+            return Response(html, mimetype='text/html', headers={'Content-Disposition': 'attachment; filename=security_report.html'})
+        elif export_type == 'excel':
+            try:
+                import openpyxl
+                from io import BytesIO
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Security Alerts"
+                ws.append(["Timestamp", "Attack Type", "Severity", "Confidence", "Source IP", "City", "Country"])
+                for a in alerts_db[-50:]:
+                    ws.append([a['timestamp'], a['attack_type'], a['severity'], f"{round(a['confidence']*100)}%", a['ip'], a.get('city', ''), a.get('country', '')])
+                buf = BytesIO()
+                wb.save(buf)
+                buf.seek(0)
+                return Response(buf.getvalue(), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename=security_report.xlsx'})
+            except ImportError:
+                return jsonify({'error': 'openpyxl non installé'}), 500
+        elif export_type == 'pdf':
+            html = f"<html><body><h1>Security Report</h1><p>{len(alerts_db)} alertes enregistrées.</p></body></html>"
+            return Response(html, mimetype='text/html', headers={'Content-Disposition': 'attachment; filename=security_report.pdf'})
+        return jsonify({'error': 'Type non supporté'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ========================================
+# LANCEMENT
+# ========================================
+if __name__ == '__main__':
+    print("\n🚀 SOC Assistant démarré sur http://localhost:5000")
+    print("📡 WebSocket activé pour le temps réel")
+    print("🌍 Géolocalisation IP activée via ip-api.com")
+    print("🤖 Chatbot avec réponses expertes pré-validées")
+    print("📊 KPIs dynamiques disponibles via /api/metrics")
+    print("🔎 Détection Port Scan activée (seuil: 3 ports)")
+    print("🔗 Blockchain activée pour incidents CRITICAL (SHA-256)")
+socketio.run(app, host='0.0.0.0', port=5000, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)

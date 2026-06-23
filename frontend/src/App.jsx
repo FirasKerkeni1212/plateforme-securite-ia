@@ -1,7 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard'; // Ton ancien dashboard
+import Dashboard from './pages/Dashboard';
+import Register from './components/Register/Register';
+import BlockchainProofDemo from './components/BlockchainDemo/BlockchainProofDemo';
+import Ledger from './components/Ledger/Ledger';
+import './index.css';
 
 // Composant de protection
 const ProtectedRoute = ({ children }) => {
@@ -18,10 +22,12 @@ function App() {
       <Routes>
         {/* Page de Login */}
         <Route path="/login" element={<Login />} />
-        
-        {/* Ton Dashboard Original (Protégé) */}
+        <Route path="/register" element={<Register />} />
+        <Route path="/demo-blockchain" element={<BlockchainProofDemo />} />
+        <Route path="/ledger" element={<Ledger />} />
+        {/* Dashboard Protégé */}
         <Route 
-          path="/" 
+          path="/dashboard" 
           element={
             <ProtectedRoute>
               <Dashboard />

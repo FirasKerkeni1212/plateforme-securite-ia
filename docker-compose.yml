@@ -1,15 +1,19 @@
-version: '3.8'
+# ============================================================
+# PLATEFORME SOC IA HYBRIDE - Docker Compose
+# Projet PFE - Tunisie Telecom / ESPRIT
+# Auteur: Firas KerKENI
+# ============================================================
 
 services:
   # ============================================================
-  # INFRASTRUCTURE CLOUD
+  # INFRASTRUCTURE CLOUD (Nginx Reverse Proxy)
   # ============================================================
   
   cloud-service:
     image: nginx:alpine
     container_name: cloud-service
     ports:
-      - "8081:80"
+      - "8082:80"
     networks:
       - hybrid-network
     volumes:
@@ -19,6 +23,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 10s
@@ -28,7 +33,7 @@ services:
     restart: unless-stopped
 
   # ============================================================
-  # INFRASTRUCTURE ON-PREMISE
+  # INFRASTRUCTURE ON-PREMISE (PostgreSQL)
   # ============================================================
   
   on-premise-server:
@@ -50,6 +55,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin"]
       interval: 10s
@@ -59,13 +65,13 @@ services:
     restart: unless-stopped
 
   # ============================================================
-  # BACKEND - Flask + CrewAI + Ollama
+  # BACKEND - Flask + CrewAI + Ollama (CŒUR IA)
   # ============================================================
   
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend          # ✅ Contexte = dossier backend
+      dockerfile: Dockerfile
     container_name: backend-service
     ports:
       - "5000:5000"
@@ -77,6 +83,7 @@ services:
       OPENAI_API_KEY: ollama
       OPENAI_API_BASE: http://ollama:11434/v1
       DATABASE_URL: postgresql://admin:SecurePass2026@on-premise-server:5432/company_data
+      REDIS_URL: redis://redis:6379
     volumes:
       - ./backend:/app
       - ./logs/backend:/app/logs
@@ -86,12 +93,14 @@ services:
         condition: service_started
       on-premise-server:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      disable: true
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:5000/api/health || exit 1"]  # ✅ Espace après -q
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 240s  # ✅ Temps pour charger Mistral + init Flask
     command: python app.py
     restart: unless-stopped
 
@@ -117,7 +126,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:5173/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -125,7 +134,7 @@ services:
     restart: unless-stopped
 
   # ============================================================
-  # LLM - Ollama (local)
+  # LLM - Ollama (Inférence Locale Mistral:latest)
   # ============================================================
   
   ollama:
@@ -138,14 +147,45 @@ services:
     volumes:
       - ollama-data:/root/.ollama
     environment:
-      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_ORIGINS: "*"
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 12
+      start_period: 300s  # ✅ Temps pour télécharger/charger mistral:latest
     command: serve
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          memory: 8G
+          cpus: '4'
+
+  # ============================================================
+  # CACHE & SESSIONS - Redis
+  # ============================================================
+  
+  redis:
+    image: redis:7-alpine
+    container_name: redis-service
+    ports:
+      - "6379:6379"
+    networks:
+      - hybrid-network
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   # ============================================================
-  # LOG COLLECTION & AGGREGATION - Fluentd
+  # LOG COLLECTION - Fluentd
   # ============================================================
   
   fluentd:
@@ -189,7 +229,7 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/-/healthy"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy", "||", "exit", "1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -214,17 +254,16 @@ services:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
-      prometheus:
-        condition: service_started
+      - prometheus
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
 
   # ============================================================
-  # LOG GENERATION
+  # LOG GENERATION (Pour tests & démo)
   # ============================================================
   
   log-generator:
@@ -241,10 +280,11 @@ services:
       - on-premise-server
     environment:
       LOG_DIR: /app/logs
+      GENERATION_INTERVAL: 30
     restart: on-failure
 
   # ============================================================
-  # ATTACK SIMULATOR
+  # ATTACK SIMULATOR (Pour tests de détection)
   # ============================================================
   
   attacker-simulator:
@@ -264,11 +304,13 @@ services:
     environment:
       CLOUD_TARGET: http://cloud-service
       BACKEND_TARGET: http://backend:5000
+      ATTACK_INTERVAL: 300  # Une attaque toutes les 5 min
     restart: on-failure
 
-      # ============================================================
-  # BLOCKCHAIN SIMULATOR (Pour Démo & Tests)
   # ============================================================
+  # BLOCKCHAIN SIMULATOR (Preuve immuable incidents CRITICAL)
+  # ============================================================
+  
   blockchain-sim:
     build:
       context: ./blockchain-sim
@@ -278,11 +320,20 @@ services:
       - "6001:6001"
     networks:
       - hybrid-network
+    volumes:
+      - blockchain-data:/app/data
     restart: unless-stopped
+
+# ============================================================
+# RÉSEAU & VOLUMES
+# ============================================================
 
 networks:
   hybrid-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   postgres-data:
@@ -292,4 +343,8 @@ volumes:
   prometheus-data:
     driver: local
   grafana-data:
+    driver: local
+  redis-data:
+    driver: local
+  blockchain-data:
     driver: local
